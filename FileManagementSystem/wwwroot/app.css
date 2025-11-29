@@ -72,3 +72,75 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Custom brand table using your palette */
+/* Requires Bootstrap's .table classes already loaded */
+
+.table-brand {
+    background-color: #ffffff;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: .5rem;
+    overflow: hidden;
+}
+
+/* Header */
+.table-brand thead th {
+    background-color: #133C55;   /* dark navy */
+    color: #ffffff;
+    border-bottom: 3px solid #386FA4;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Body borders + spacing */
+.table-brand tbody td,
+.table-brand tbody th {
+    border-top: 1px solid #e3f4fc;
+    vertical-align: middle;
+}
+
+/* Zebra striping */
+.table-brand tbody tr:nth-of-type(even) {
+    background-color: #84D2F6;   /* soft blue */
+}
+
+.table-brand tbody tr:nth-of-type(odd) {
+    background-color: #ffffff;
+}
+
+/* Hover state */
+.table-brand tbody tr:hover {
+    background-color: #59A5D8;   /* mid blue */
+    color: #0b1f2b;
+}
+
+/* Optional: footer styling */
+.table-brand tfoot td,
+.table-brand tfoot th {
+    background-color: #91E5F6;
+    border-top: 2px solid #386FA4;
+    font-weight: 500;
+}
+
+/* Make sure links/icons stay readable */
+.table-brand a {
+    color: #133C55;
+    text-decoration: none;
+}
+
+.table-brand a:hover {
+    text-decoration: underline;
+}
+
+/* Optional: compact variant */
+.table-brand.table-sm td,
+.table-brand.table-sm th {
+    padding-top: .4rem;
+    padding-bottom: .4rem;
+}
+
+.bi-person-plus-settings{
+    background-image: url("'http://www.w3.org/2000/svg' width='16' height='16' fill='black' class='bi bi-person-plus' viewBox='0 0 16 16'%3E%3C path d='M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z'%3E%3C/%3E %3E%3Cpath fill-rule='evenodd' d='M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5'/%3E%3C/svg%3E");
+}
