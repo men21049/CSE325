@@ -1,0 +1,268 @@
+:root {
+    --docms-navy:      #133C55;
+    --docms-navy-soft: #1c4f72;
+    --docms-primary:   #59A5D8;
+    --docms-primary-mid:#386FA4;
+    --docms-accent-1:  #84D2F6;
+    --docms-accent-2:  #91E5F6;
+    --docms-bg:        #f4f7fb;
+    --docms-card-bg:   #ffffff;
+    --docms-text-main: #133C55;
+    --docms-text-muted:#6c7a89;
+}
+body {
+    background-color: var(--docms-bg);
+    color: var(--docms-text-main);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Smooth tiles & cards */
+.card,
+.docms-card {
+    background-color: var(--docms-card-bg);
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 12px 25px rgba(19, 60, 85, 0.08);
+}
+
+/* General pill style (e.g. filters, tags) */
+.badge,
+.docms-pill {
+    border-radius: 999px;
+    padding-inline: .8rem;
+    padding-block: .2rem;
+    font-weight: 500;
+    font-size: .75rem;
+}
+.docms-sidebar {
+    background-color: var(--docms-navy);
+    color: #ffffff;
+    min-height: 100vh;
+    width: 240px;
+}
+
+.docms-sidebar .navbar-brand,
+.docms-sidebar .sidebar-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+}
+
+.docms-sidebar .nav-link {
+    color: #dbe6f2;
+    font-weight: 500;
+    padding: .6rem 1.5rem;
+    border-radius: 999px;
+    margin: .15rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.docms-sidebar .nav-link i {
+    font-size: 1.1rem;
+}
+
+.docms-sidebar .nav-link:hover {
+    background-color: var(--docms-primary-mid);
+    color: #ffffff;
+}
+
+.docms-sidebar .nav-link.active {
+    background-color: var(--docms-primary);
+    color: #ffffff;
+}
+
+/* Logout at bottom */
+.docms-sidebar-footer {
+    margin-top: auto;
+    padding: 1.5rem;
+    font-size: .9rem;
+    opacity: .8;
+}
+
+.docms-topbar {
+    background-color: var(--docms-card-bg);
+    border-bottom: 1px solid rgba(0,0,0,.03);
+    padding: 1rem 1.5rem;
+}
+
+.docms-topbar .form-control {
+    border-radius: 999px;
+    border: none;
+    background-color: #eef4fb;
+    padding-inline: 1.25rem;
+}
+
+.docms-topbar .form-control:focus {
+    box-shadow: 0 0 0 2px rgba(89, 165, 216, 0.35);
+    border-color: transparent;
+}
+
+.docms-avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--docms-primary-mid);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+.docms-metric-card {
+    background: linear-gradient(
+        135deg,
+        var(--docms-primary-mid),
+        var(--docms-primary)
+    );
+    color: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 18px 35px rgba(19, 60, 85, 0.28);
+}
+
+.docms-metric-card .card-title {
+    font-size: .9rem;
+    text-transform: uppercase;
+    opacity: .85;
+    letter-spacing: .08em;
+}
+
+.docms-metric-card .metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: .25rem;
+}
+
+.docms-metric-card .metric-subtext {
+    font-size: .8rem;
+    opacity: .85;
+}
+.docms-table-card {
+    border-radius: 18px;
+    background-color: var(--docms-card-bg);
+    box-shadow: 0 12px 30px rgba(19, 60, 85, 0.10);
+}
+
+.docms-table-card .card-header {
+    background-color: transparent;
+    border-bottom: none;
+    padding: 1.1rem 1.5rem .75rem;
+}
+
+.docms-table-card .card-title {
+    font-weight: 600;
+    color: var(--docms-text-main);
+}
+
+.docms-table-card .card-header small {
+    color: var(--docms-text-muted);
+}
+.docms-filter-pills .nav-link {
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 500;
+    padding: .25rem .8rem;
+    margin-left: .30rem;
+    border: 1px solid transparent;
+    color: var(--docms-primary-mid);
+    background-color: rgba(132, 210, 246, 0.35); /* #84d2f6 but softer */
+}
+
+.docms-filter-pills .nav-link:hover {
+    border-color: var(--docms-primary-mid);
+}
+
+.docms-filter-pills .nav-link.active {
+    background-color: var(--docms-primary);
+    color: #ffffff;
+    border-color: var(--docms-primary-mid);
+}
+.docms-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .85rem;
+}
+
+.docms-table thead th {
+    border-bottom: 2px solid rgba(0,0,0,.04);
+    color: var(--docms-text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: .75rem;
+}
+
+.docms-table tbody tr:nth-of-type(even) {
+    background-color: rgba(145, 229, 246, 0.25); /* #91e5f6 tint */
+}
+
+.docms-table tbody tr:hover {
+    background-color: var(--docms-accent-1);
+    color: var(--docms-text-main);
+}
+
+.docms-table td,
+.docms-table th {
+    border-top: none;
+    padding: .65rem 1.25rem;
+    vertical-align: middle;
+}
+
+/* first & last cell rounded like the tile from the screenshot */
+.docms-table tbody tr:first-child td:first-child,
+.docms-table thead tr th:first-child {
+    border-top-left-radius: 12px;
+}
+.docms-table tbody tr:first-child td:last-child,
+.docms-table thead tr th:last-child {
+    border-top-right-radius: 12px;
+}
+.docms-status-pill {
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .2rem .6rem;
+    text-transform: uppercase;
+}
+
+.docms-status-pill.open {
+    background-color: var(--docms-primary);
+    color: #ffffff;
+}
+
+.docms-status-pill.pending {
+    background-color: var(--docms-accent-2);
+    color: var(--docms-navy);
+}
+
+.docms-status-pill.closed,
+.docms-status-pill.archived {
+    background-color: #e4edf4;
+    color: var(--docms-text-main);
+}
+.docms-login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top left, var(--docms-accent-1), var(--docms-bg));
+}
+
+.docms-login-card {
+    max-width: 420px;
+    width: 100%;
+    border-radius: 18px;
+    padding: 2rem 2.5rem;
+    box-shadow: 0 22px 45px rgba(19, 60, 85, 0.20);
+    background-color: #ffffff;
+}
+
+.docms-login-card .btn-primary {
+    background-color: var(--docms-primary-mid);
+    border-color: var(--docms-primary-mid);
+}
+
+.docms-login-card .btn-primary:hover {
+    background-color: var(--docms-primary);
+    border-color: var(--docms-primary);
+}
