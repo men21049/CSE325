@@ -1,4 +1,4 @@
-namespace FileManagementSystem.Model
+namespace DocumentManagementSystem.Model
 {
     using System;
     using System.Data;

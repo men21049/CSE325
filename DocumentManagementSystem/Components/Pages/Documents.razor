@@ -1,0 +1,49 @@
+@using DocumentManagementSystem.Model
+
+@page "/documents"
+
+<h3>Documents</h3>
+
+<input class="form-control mb-3" placeholder="Search documents..." @bind="SearchText" />
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>File Name</th>
+            <th>Office</th>
+            <th>Date Uploaded</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var doc in FilteredDocuments)
+        {
+            <tr>
+                <td>@doc.FileName</td>
+                <td>@doc.Office</td>
+                <td>@doc.DateUploaded.ToShortDateString()</td>
+                <td>
+                    <button class="btn btn-sm btn-primary">View</button>
+                    <button class="btn btn-sm btn-warning">Edit</button>
+                    <button class="btn btn-sm btn-danger">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private string SearchText = "";
+
+    // ❗RENAMED so it doesn't conflict with the page class
+    private List<DocumentModel> DocumentList = new()
+    {
+        new DocumentModel { FileName = "BudgetReport.pdf", Office = "Accounting", DateUploaded = DateTime.Now },
+        new DocumentModel { FileName = "EmployeeList.csv", Office = "HR", DateUploaded = DateTime.Now },
+    };
+
+    // ❗Updated to use DocumentList
+    private IEnumerable<DocumentModel> FilteredDocuments =>
+        DocumentList.Where(d => string.IsNullOrEmpty(SearchText) ||
+                                d.FileName.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+}
