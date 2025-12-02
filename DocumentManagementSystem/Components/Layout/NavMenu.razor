@@ -8,28 +8,55 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
+
+        <!-- Home -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
         </div>
 
+        <!-- Documents -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="documents">
+                <i class="bi bi-folder-fill" aria-hidden="true"></i> Documents
+            </NavLink>
+        </div>
+
+        <!-- Offices -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="offices">
+                <i class="bi bi-building" aria-hidden="true"></i> Offices
+            </NavLink>
+        </div>
+
+        <!-- Upload -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="upload">
+                <i class="bi bi-cloud-upload-fill" aria-hidden="true"></i> Upload
+            </NavLink>
+        </div>
+
+        <!-- Users -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="users">
                 <i class="bi bi-person-fill-nav-menu" aria-hidden="true"></i> Users
             </NavLink>
         </div>
 
+        <!-- Settings -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="settings">
                 <i class="bi bi-gear-fill-nav-menu" aria-hidden="true"></i> Settings
             </NavLink>
         </div>
 
+        <!-- Logout -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="logout">
                 <i class="bi bi-arrow-up-left-square-fill-nav-menu" aria-hidden="true"></i> Logout
             </NavLink>
         </div>
+
     </nav>
 </div>
