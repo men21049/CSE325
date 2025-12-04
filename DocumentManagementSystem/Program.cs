@@ -10,6 +10,7 @@ builder.Services.AddSingleton<DocumentManagementSystem.Model.DatabaseConnection>
 builder.Services.AddSingleton<DocumentService>();
 builder.Services.AddSingleton<OfficeService>();
 builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<BlobStorageService>();
 
 // ---------------------------------------------------------------------
 // Razor Components / Blazor Server setup

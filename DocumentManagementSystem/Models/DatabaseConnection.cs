@@ -23,9 +23,9 @@ namespace DocumentManagementSystem.Model
 
         public async Task<DbDataReader> ExecuteReaderAsync(string sql, params SqlParameter[] parameters)
         {
-            using var connection = CreateConnection();
+            using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, (SqlConnection)connection);
+            using var command = new SqlCommand(sql, connection);
             
             if (parameters != null && parameters.Length > 0)
             {
@@ -39,9 +39,9 @@ namespace DocumentManagementSystem.Model
         {
             var results = new List<Dictionary<string, object>>();
             
-            using var connection = CreateConnection();
+            using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, (SqlConnection)connection);
+            using var command = new SqlCommand(sql, connection);
             
             if (parameters != null && parameters.Length > 0)
             {
@@ -64,9 +64,9 @@ namespace DocumentManagementSystem.Model
 
         public async Task<int> ExecuteNonQueryAsync(string sql, params SqlParameter[] parameters)
         {
-            using var connection = CreateConnection();
+            using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, (SqlConnection)connection);
+            using var command = new SqlCommand(sql, connection);
             
             if (parameters != null && parameters.Length > 0)
             {
@@ -78,9 +78,9 @@ namespace DocumentManagementSystem.Model
 
         public async Task<object?> ExecuteScalarAsync(string sql, params SqlParameter[] parameters)
         {
-            using var connection = CreateConnection();
+            using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, (SqlConnection)connection);
+            using var command = new SqlCommand(sql, connection);
             
             if (parameters != null && parameters.Length > 0)
             {
@@ -92,13 +92,14 @@ namespace DocumentManagementSystem.Model
 
         public async Task<int> ExecuteTransactionAsync(Func<SqlConnection, SqlTransaction, Task<int>> transactionAction)
         {
-            using var connection = CreateConnection();
+            using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
-            using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+            var dbTransaction = await connection.BeginTransactionAsync();
+            using var transaction = (SqlTransaction)dbTransaction;
             
             try
             {
-                var rowsAffected = await transactionAction((SqlConnection)connection, transaction);
+                var rowsAffected = await transactionAction(connection, transaction);
                 await transaction.CommitAsync();
                 return rowsAffected;
             }
