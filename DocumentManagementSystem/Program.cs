@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------------------------------------------------------------------
 // REGISTER APPLICATION SERVICES (Document, Office, User)
 // ---------------------------------------------------------------------
+builder.Services.AddSingleton<DocumentManagementSystem.Model.DatabaseConnection>();
 builder.Services.AddSingleton<DocumentService>();
 builder.Services.AddSingleton<OfficeService>();
 builder.Services.AddSingleton<UserService>();
