@@ -16,26 +16,28 @@ namespace DocumentManagementSystem.Services
             
             _blobServiceClient = new BlobServiceClient(connectionString);
             _containerName = configuration["AzureStorage:ContainerName"] ?? "documents";
-            
-            // Asegurar que el contenedor existe
-            InitializeContainerAsync().GetAwaiter().GetResult();
+
         }
 
-        private async Task InitializeContainerAsync()
+        private async Task EnsureContainerExistsAsync()
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
-            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+            try
+            {
+                var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+                // Crear el contenedor sin acceso público desde el inicio
+                await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+            }
+            catch
+            {
+                throw;
+            }
         }
 
-        /// <summary>
-        /// Sube un archivo a Azure Blob Storage
-        /// </summary>
-        /// <param name="fileStream">Stream del archivo a subir</param>
-        /// <param name="fileName">Nombre del archivo</param>
-        /// <param name="contentType">Tipo de contenido del archivo</param>
-        /// <returns>URL del blob subido</returns>
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType)
         {
+
+            await EnsureContainerExistsAsync();
+            
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
             var blobClient = containerClient.GetBlobClient(fileName);
 
@@ -52,27 +54,18 @@ namespace DocumentManagementSystem.Services
             return blobClient.Uri.ToString();
         }
 
-        /// <summary>
-        /// Sube un archivo desde un IBrowserFile de Blazor
-        /// </summary>
-        /// <param name="file">Archivo de Blazor</param>
-        /// <param name="customFileName">Nombre personalizado (opcional). Si es null, usa el nombre original</param>
-        /// <returns>URL del blob subido</returns>
         public async Task<string> UploadBrowserFileAsync(Microsoft.AspNetCore.Components.Forms.IBrowserFile file, string? customFileName = null)
         {
             var fileName = customFileName ?? file.Name;
             
-            // Agregar timestamp para evitar conflictos de nombres
+
             var fileNameWithTimestamp = $"{DateTime.UtcNow:yyyyMMddHHmmss}_{fileName}";
             
-            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB máximo
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB max
             return await UploadFileAsync(stream, fileNameWithTimestamp, file.ContentType);
         }
 
-        /// <summary>
-        /// Elimina un archivo de Azure Blob Storage
-        /// </summary>
-        /// <param name="fileName">Nombre del archivo a eliminar</param>
+
         public async Task DeleteFileAsync(string fileName)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
@@ -80,11 +73,6 @@ namespace DocumentManagementSystem.Services
             await blobClient.DeleteIfExistsAsync();
         }
 
-        /// <summary>
-        /// Obtiene la URL de un blob
-        /// </summary>
-        /// <param name="fileName">Nombre del archivo</param>
-        /// <returns>URL del blob</returns>
         public string GetBlobUrl(string fileName)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
@@ -92,11 +80,6 @@ namespace DocumentManagementSystem.Services
             return blobClient.Uri.ToString();
         }
 
-        /// <summary>
-        /// Descarga un archivo de Azure Blob Storage
-        /// </summary>
-        /// <param name="fileName">Nombre del archivo a descargar</param>
-        /// <returns>Stream del archivo</returns>
         public async Task<Stream> DownloadFileAsync(string fileName)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);

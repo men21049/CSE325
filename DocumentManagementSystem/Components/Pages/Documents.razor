@@ -1,49 +1,154 @@
-@using DocumentManagementSystem.Model
-
 @page "/documents"
+@rendermode InteractiveServer
+@using DocumentManagementSystem.Model
+@using Microsoft.Data.SqlClient
+@inject DatabaseConnection DbConnection
 
 <h3>Documents</h3>
 
-<input class="form-control mb-3" placeholder="Search documents..." @bind="SearchText" />
+<input class="form-control mb-3" placeholder="Search documents..." @bind="SearchText" @oninput="OnSearchChanged" />
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>File Name</th>
-            <th>Office</th>
-            <th>Date Uploaded</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var doc in FilteredDocuments)
-        {
+@if (IsLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading documents...</p>
+    </div>
+}
+else if (DocumentList.Count == 0)
+{
+    <div class="alert alert-info">No documents found.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
             <tr>
-                <td>@doc.FileName</td>
-                <td>@doc.Office</td>
-                <td>@doc.DateUploaded.ToShortDateString()</td>
-                <td>
-                    <button class="btn btn-sm btn-primary">View</button>
-                    <button class="btn btn-sm btn-warning">Edit</button>
-                    <button class="btn btn-sm btn-danger">Delete</button>
-                </td>
+                <th>File Name</th>
+                <th>File Type</th>
+                <th>Office</th>
+                <th>Date Uploaded</th>
+                <th>Actions</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var doc in FilteredDocuments)
+            {
+                <tr>
+                    <td>@doc.FileName</td>
+                    <td><span class="badge bg-secondary">@doc.FileType</span></td>
+                    <td>@doc.OfficeName</td>
+                    <td>@doc.UploadDate.ToShortDateString()</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(doc.FilePath))
+                        {
+                            <a href="@doc.FilePath" target="_blank" class="btn btn-sm btn-primary">View</a>
+                        }
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteDocument(doc.DocumentID)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert alert-info mt-3">@Message</div>
+}
 
 @code {
     private string SearchText = "";
+    private List<DocumentModel> DocumentList = new();
+    private bool IsLoading = true;
+    private string Message = "";
 
-    // ❗RENAMED so it doesn't conflict with the page class
-    private List<DocumentModel> DocumentList = new()
+    protected override async Task OnInitializedAsync()
     {
-        new DocumentModel { FileName = "BudgetReport.pdf", Office = "Accounting", DateUploaded = DateTime.Now },
-        new DocumentModel { FileName = "EmployeeList.csv", Office = "HR", DateUploaded = DateTime.Now },
-    };
+        await LoadDocumentsAsync();
+    }
 
-    // ❗Updated to use DocumentList
+    private async Task LoadDocumentsAsync()
+    {
+        IsLoading = true;
+        Message = "";
+        
+        try
+        {
+            // Consulta con JOIN para obtener el nombre de la oficina
+            var sql = @"
+                SELECT 
+                    d.DocumentID,
+                    d.FileName,
+                    d.FilePath,
+                    d.FileType,
+                    d.UploadDate,
+                    d.officeID,
+                    o.OfficeName
+                FROM Documents d
+                LEFT JOIN Offices o ON d.officeID = o.OfficeID
+                ORDER BY d.UploadDate DESC";
+            
+            var results = await DbConnection.ExecuteQueryAsync(sql);
+            
+            DocumentList = results
+                .Select(row => new DocumentModel
+                {
+                    DocumentID = row["DocumentID"] != null ? Convert.ToInt32(row["DocumentID"]) : 0,
+                    FileName = row["FileName"]?.ToString() ?? string.Empty,
+                    FilePath = row["FilePath"]?.ToString() ?? string.Empty,
+                    FileType = row["FileType"]?.ToString() ?? string.Empty,
+                    UploadDate = row["UploadDate"] != null ? Convert.ToDateTime(row["UploadDate"]) : DateTime.MinValue,
+                    OfficeID = row["officeID"] != null ? Convert.ToInt32(row["officeID"]) : 0,
+                    OfficeName = row["OfficeName"]?.ToString() ?? "Unknown"
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error loading documents: {ex.Message}";
+            DocumentList = new List<DocumentModel>();
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
     private IEnumerable<DocumentModel> FilteredDocuments =>
         DocumentList.Where(d => string.IsNullOrEmpty(SearchText) ||
-                                d.FileName.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                                d.FileName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                d.OfficeName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                d.FileType.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        SearchText = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private async Task DeleteDocument(int documentId)
+    {
+        try
+        {
+            var sql = "DELETE FROM Documents WHERE DocumentID = @DocumentID";
+            var parameters = new[] { new SqlParameter("@DocumentID", documentId) };
+            await DbConnection.ExecuteNonQueryAsync(sql, parameters);
+            
+            // Recargar la lista de documentos
+            await LoadDocumentsAsync();
+            Message = "Document deleted successfully.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error deleting document: {ex.Message}";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
 }
