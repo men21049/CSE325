@@ -1,19 +1,55 @@
 @page "/login"
+@using DocumentManagementSystem.Services
+@inject UserService UserService
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 
-<PageTitle>Login</PageTitle>
+<h3>Login</h3>
 
-<h1>Login</h1>
+<div class="mb-3">
+    <label>Username</label>
+    <input class="form-control" @bind="Username" />
+</div>
 
-<p role="status">Current count: @currentCount</p>
+<div class="mb-3">
+    <label>Password</label>
+    <input class="form-control" type="password" @bind="Password" />
+</div>
 
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<button class="btn btn-primary" @onclick="DoLogin">Login</button>
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="text-danger mt-2">@Error</div>
+}
 
 @code {
-    private int currentCount = 0;
+    private string Username = "";
+    private string Password = "";
+    private string Error = "";
 
-    private void IncrementCount()
+    private void DoLogin()
     {
-        currentCount++;
+        Console.WriteLine("DoLogin triggered");
+
+        var role = UserService.ValidateUser(Username, Password);
+
+        Console.WriteLine("ValidateUser returned: " + role);
+
+        if (role == "Admin")
+        {
+            Console.WriteLine("Redirecting to /admin");
+            Nav.NavigateTo("/admin");
+        }
+        else if (role == "User")
+        {
+            Console.WriteLine("Redirecting to /");
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            Console.WriteLine("Invalid login");
+            Error = "Invalid username or password.";
+        }
     }
 }
