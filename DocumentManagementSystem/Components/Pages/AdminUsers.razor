@@ -1,0 +1,128 @@
+@page "/admin/users"
+@using DocumentManagementSystem.Services
+@using DocumentManagementSystem.Models
+@inject UserService UserService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<h2>User Management</h2>
+
+@if (!IsAdmin)
+{
+    <p class="text-danger">Access denied.</p>
+}
+
+<button class="btn btn-primary mb-3" @onclick="ShowAddForm">Add User</button>
+
+@if (ShowForm)
+{
+    <div class="card p-3 mb-3">
+        <h4>Add New User</h4>
+
+        <div class="mb-2">
+            <label>Username</label>
+            <input class="form-control" @bind="NewUser.Username" />
+        </div>
+
+        <div class="mb-2">
+            <label>Password</label>
+            <input class="form-control" @bind="NewUser.PasswordHash" />
+        </div>
+
+        <div class="mb-2">
+            <label>Role</label>
+            <select class="form-control" @bind="NewUser.Role">
+                <option>User</option>
+                <option>Admin</option>
+            </select>
+        </div>
+
+        <button class="btn btn-success" @onclick="AddUser">Save</button>
+        <button class="btn btn-secondary ms-2" @onclick="HideAddForm">Cancel</button>
+    </div>
+}
+
+@if (UserList == null)
+{
+    <p>Loading users...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>UserId</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in UserList)
+            {
+                <tr>
+                    <td>@u.UserId</td>
+                    <td>@u.Username</td>
+                    <td>
+                        <select class="form-select w-auto"
+                                @onchange="e => ChangeRole(u.UserId, e.Value?.ToString())">
+                            <option value="User" selected="@("User" == u.Role)">User</option>
+                            <option value="Admin" selected="@("Admin" == u.Role)">Admin</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteUser(u.UserId)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool IsAdmin = true; // replace later with session/role
+    private List<UserModel>? UserList;
+    private UserModel NewUser = new();
+    private bool ShowForm = false;
+
+    protected override void OnInitialized()
+    {
+        if (!IsAdmin)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        LoadUsers();
+    }
+
+    private void LoadUsers() => UserList = UserService.GetUsers();
+
+    private void ShowAddForm() => ShowForm = true;
+    private void HideAddForm() => ShowForm = false;
+
+    private void AddUser()
+    {
+        UserService.AddUser(NewUser.Username!, NewUser.PasswordHash!, NewUser.Role!);
+        LoadUsers();
+        NewUser = new UserModel();
+        ShowForm = false;
+    }
+
+    private void DeleteUser(int id)
+    {
+        UserService.DeleteUser(id);
+        LoadUsers();
+    }
+
+    private void ChangeRole(int id, string? newRole)
+    {
+        if (newRole is not null)
+        {
+            UserService.UpdateRole(id, newRole);
+            LoadUsers();
+        }
+    }
+}

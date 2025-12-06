@@ -1,0 +1,125 @@
+@page "/admin/offices"
+@using DocumentManagementSystem.Services
+@using DocumentManagementSystem.Models
+@inject OfficeService OfficeService
+@inject UserService UserService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<h2>Office Management</h2>
+
+@if (!IsAdmin)
+{
+    <p class="text-danger">Access denied.</p>
+}
+
+<button class="btn btn-primary mb-3" @onclick="ShowAddForm">Add Office</button>
+
+@if (ShowForm)
+{
+    <div class="card p-3 mb-3">
+        <h4>Add / Edit Office</h4>
+
+        <input class="form-control" @bind="OfficeName" placeholder="Office Name" />
+        <input class="form-control mt-2" @bind="OfficeDescription" placeholder="Description (optional)" />
+
+        <button class="btn btn-success mt-2" @onclick="SaveOffice">Save</button>
+        <button class="btn btn-secondary mt-2 ms-2" @onclick="CancelForm">Cancel</button>
+    </div>
+}
+
+@if (OfficeList == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>OfficeId</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var o in OfficeList)
+            {
+                <tr>
+                    <td>@o.OfficeId</td>
+                    <td>@o.OfficeName</td>
+                    <td>@o.Description</td>
+
+                    <td>
+                        <button class="btn btn-warning btn-sm me-2" @onclick="() => EditOffice(o)">Edit</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteOffice(o.OfficeId)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool IsAdmin = true;
+    private List<OfficeModel>? OfficeList;
+
+    private bool ShowForm = false;
+
+    private int EditingId = 0;
+    private string OfficeName = "";
+    private string OfficeDescription = "";
+
+    protected override void OnInitialized()
+    {
+        if (UserService.CurrentRole != "Admin")
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        LoadOffices();
+    }
+
+    void LoadOffices()
+    {
+        OfficeList = OfficeService.GetOffices();
+    }
+
+    void ShowAddForm()
+    {
+        EditingId = 0;
+        OfficeName = "";
+        OfficeDescription = "";
+        ShowForm = true;
+    }
+
+    void EditOffice(OfficeModel o)
+    {
+        EditingId = o.OfficeId;
+        OfficeName = o.OfficeName ?? "";
+        OfficeDescription = o.Description ?? "";
+        ShowForm = true;
+    }
+
+    void SaveOffice()
+    {
+        if (EditingId == 0)
+            OfficeService.AddOffice(OfficeName, OfficeDescription);
+        else
+            OfficeService.UpdateOffice(EditingId, OfficeName, OfficeDescription);
+
+        LoadOffices();
+        ShowForm = false;
+    }
+
+    void CancelForm() => ShowForm = false;
+
+    void DeleteOffice(int id)
+    {
+        OfficeService.DeleteOffice(id);
+        LoadOffices();
+    }
+}

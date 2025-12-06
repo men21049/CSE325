@@ -8,85 +8,139 @@ namespace DocumentManagementSystem.Services
     {
         private readonly IConfiguration _config;
 
+        // 🔹 Stores the logged-in user's Username and Role
+        public string? CurrentUsername { get; private set; }
+        public string? CurrentRole { get; private set; }
+
         public UserService(IConfiguration config)
         {
             _config = config;
         }
 
-        // Returns:
-        // "Admin"  → if username/password match and role is Admin
-        // "User"   → if username/password match and role is User
-        // null     → if login invalid
+        // 🔹 Validate username + password
         public string? ValidateUser(string username, string password)
         {
-            Console.WriteLine("ValidateUser started");
-
-            try
-            {
-                string connStr = _config.GetConnectionString("DefaultConnection");
-                Console.WriteLine("Connection string: " + connStr);
-
-                using var conn = new NpgsqlConnection(connStr);
-                conn.Open();
-                Console.WriteLine("Connected to PostgreSQL");
-
-                string sql = @"
-                    SELECT ""Role""
-                    FROM ""DocMS"".""Users""
-                    WHERE ""Username"" = @u
-                    AND ""PasswordHash"" = @p
-                    LIMIT 1;
-                ";
-
-                using var cmd = new NpgsqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@u", username);
-                cmd.Parameters.AddWithValue("@p", password);
-
-                Console.WriteLine($"Executing SQL: Username={username}, Password={password}");
-
-                var result = cmd.ExecuteScalar();
-
-                Console.WriteLine("SQL result: " + (result == null ? "NULL" : result.ToString()));
-
-                return result?.ToString();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("ERROR:");
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(ex.StackTrace);
-                return null;
-            }
-        }
-
-        public List<UserModel> GetUsers()
-        {
-            var users = new List<UserModel>();
             string connStr = _config.GetConnectionString("DefaultConnection");
 
             using var conn = new NpgsqlConnection(connStr);
             conn.Open();
 
             string sql = @"
-                SELECT ""UserId"", ""Username"", ""Role""
+                SELECT ""Role""
                 FROM ""DocMS"".""Users""
-                ORDER BY ""UserId"";
+                WHERE ""Username"" = @u
+                  AND ""PasswordHash"" = @p
+                LIMIT 1;
             ";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@u", username);
+            cmd.Parameters.AddWithValue("@p", password);
+
+            var result = cmd.ExecuteScalar();
+
+            if (result != null)
+            {
+                CurrentUsername = username;  // <-- FIXED
+                CurrentRole = result.ToString();
+            }
+
+            return CurrentRole;
+        }
+
+        // ---------------------------
+        // USER LIST METHODS
+        // ---------------------------
+
+        public List<UserModel> GetUsers()
+        {
+            var list = new List<UserModel>();
+            string connStr = _config.GetConnectionString("DefaultConnection");
+
+            using var conn = new NpgsqlConnection(connStr);
+            conn.Open();
+
+            string sql = @"SELECT ""UserId"", ""Username"", ""PasswordHash"", ""Role"" FROM ""DocMS"".""Users"";";
 
             using var cmd = new NpgsqlCommand(sql, conn);
             using var reader = cmd.ExecuteReader();
 
             while (reader.Read())
             {
-                users.Add(new UserModel
+                list.Add(new UserModel
                 {
                     UserId = reader.GetInt32(0),
                     Username = reader.GetString(1),
-                    Role = reader.GetString(2)
+                    PasswordHash = reader.GetString(2),
+                    Role = reader.GetString(3)
                 });
             }
 
-            return users;
+            return list;
+        }
+
+        public void AddUser(string username, string password, string role)
+        {
+            string connStr = _config.GetConnectionString("DefaultConnection");
+
+            using var conn = new NpgsqlConnection(connStr);
+            conn.Open();
+
+            string sql = @"
+                INSERT INTO ""DocMS"".""Users"" (""Username"", ""PasswordHash"", ""Role"")
+                VALUES (@u, @p, @r)
+            ";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@u", username);
+            cmd.Parameters.AddWithValue("@p", password);
+            cmd.Parameters.AddWithValue("@r", role);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void DeleteUser(int id)
+        {
+            string connStr = _config.GetConnectionString("DefaultConnection");
+
+            using var conn = new NpgsqlConnection(connStr);
+            conn.Open();
+
+            string sql = @"DELETE FROM ""DocMS"".""Users"" WHERE ""UserId"" = @id";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void UpdateRole(int id, string role)
+        {
+            string connStr = _config.GetConnectionString("DefaultConnection");
+
+            using var conn = new NpgsqlConnection(connStr);
+            conn.Open();
+
+            string sql = @"UPDATE ""DocMS"".""Users"" SET ""Role"" = @r WHERE ""UserId"" = @id";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@r", role);
+            cmd.Parameters.AddWithValue("@id", id);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public int CountAllUsers()
+        {
+            string connStr = _config.GetConnectionString("DefaultConnection");
+
+            using var conn = new NpgsqlConnection(connStr);
+            conn.Open();
+
+            string sql = @"SELECT COUNT(*) FROM ""DocMS"".""Users"";";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
     }

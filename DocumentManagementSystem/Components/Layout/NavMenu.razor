@@ -1,3 +1,5 @@
+@inject DocumentManagementSystem.Services.UserService UserService
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">DMS</a>
@@ -12,49 +14,51 @@
         <!-- Home -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <i class="bi bi-house-door-fill"></i> Home
             </NavLink>
         </div>
 
         <!-- Documents -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="documents">
-                <i class="bi bi-folder-fill" aria-hidden="true"></i> Documents
-            </NavLink>
-        </div>
-
-        <!-- Offices -->
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="offices">
-                <i class="bi bi-building" aria-hidden="true"></i> Offices
+            <NavLink class="nav-link" href="/documents">
+                <i class="bi bi-folder-fill"></i> Documents
             </NavLink>
         </div>
 
         <!-- Upload -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="upload">
-                <i class="bi bi-cloud-upload-fill" aria-hidden="true"></i> Upload
+            <NavLink class="nav-link" href="/upload">
+                <i class="bi bi-cloud-upload-fill"></i> Upload
             </NavLink>
         </div>
 
-        <!-- Users -->
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="users">
-                <i class="bi bi-person-fill-nav-menu" aria-hidden="true"></i> Users
-            </NavLink>
-        </div>
+        <!-- ADMIN ONLY LINKS -->
+        @if (UserService.CurrentRole == "Admin")
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/admin/users">
+                    <i class="bi bi-people-fill"></i> Users
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/admin/offices">
+                    <i class="bi bi-building"></i> Manage Offices
+                </NavLink>
+            </div>
+        }
 
         <!-- Settings -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="settings">
-                <i class="bi bi-gear-fill-nav-menu" aria-hidden="true"></i> Settings
+            <NavLink class="nav-link" href="/settings">
+                <i class="bi bi-gear-fill"></i> Settings
             </NavLink>
         </div>
 
         <!-- Logout -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="logout">
-                <i class="bi bi-arrow-up-left-square-fill-nav-menu" aria-hidden="true"></i> Logout
+            <NavLink class="nav-link" href="/logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
             </NavLink>
         </div>
 

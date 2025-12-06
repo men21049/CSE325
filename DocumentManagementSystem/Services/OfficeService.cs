@@ -1,23 +1,89 @@
+using Npgsql;
+using Microsoft.Extensions.Configuration;
+using DocumentManagementSystem.Models;
+
 namespace DocumentManagementSystem.Services
 {
     public class OfficeService
     {
-        private List<string> Offices = new()
-        {
-            "HR", "Accounting", "Admin", "Supply"
-        };
+        private readonly IConfiguration _config;
 
-        public IEnumerable<string> GetOffices() => Offices;
-
-        public void AddOffice(string office)
+        public OfficeService(IConfiguration config)
         {
-            if (!Offices.Contains(office))
-                Offices.Add(office);
+            _config = config;
         }
 
-        public void RemoveOffice(string office)
+        private string Conn => _config.GetConnectionString("DefaultConnection");
+
+        // ------------------------
+        // Get All Offices
+        // ------------------------
+        public List<OfficeModel> GetOffices()
         {
-            Offices.Remove(office);
+            var list = new List<OfficeModel>();
+
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"SELECT ""OfficeId"", ""OfficeName"", ""Description"" 
+                        FROM ""DocMS"".""Offices"" ORDER BY ""OfficeId"";";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                list.Add(new OfficeModel
+                {
+                    OfficeId = reader.GetInt32(0),
+                    OfficeName = reader.IsDBNull(1) ? null : reader.GetString(1),
+                    Description = reader.IsDBNull(2) ? null : reader.GetString(2)
+                });
+            }
+
+            return list;
+        }
+
+        public void AddOffice(string name, string? description)
+        {
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"INSERT INTO ""DocMS"".""Offices"" (""OfficeName"", ""Description"")
+                        VALUES (@n, @d);";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@n", name);
+            cmd.Parameters.AddWithValue("@d", (object?)description ?? DBNull.Value);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void UpdateOffice(int id, string name, string? description)
+        {
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"UPDATE ""DocMS"".""Offices"" 
+                        SET ""OfficeName"" = @n, ""Description"" = @d
+                        WHERE ""OfficeId"" = @id;";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@n", name);
+            cmd.Parameters.AddWithValue("@d", (object?)description ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void DeleteOffice(int id)
+        {
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"DELETE FROM ""DocMS"".""Offices"" WHERE ""OfficeId"" = @id;";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
         }
     }
 }

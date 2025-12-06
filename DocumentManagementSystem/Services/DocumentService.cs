@@ -1,28 +1,65 @@
+using Npgsql;
+using Microsoft.Extensions.Configuration;
 using DocumentManagementSystem.Model;
 
 namespace DocumentManagementSystem.Services
 {
     public class DocumentService
     {
+        private readonly IConfiguration _config;
+
+        public DocumentService(IConfiguration config)
+        {
+            _config = config;
+        }
+
+        // Example existing in-memory list
         private List<DocumentModel> Documents = new();
 
-        public IEnumerable<DocumentModel> GetAll() => Documents;
-
-        public void AddDocument(DocumentModel doc)
+        // -----------------------
+        // Dashboard Count: Documents
+        // -----------------------
+        public int CountAllDocuments()
         {
-            Documents.Add(doc);
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"SELECT COUNT(*) FROM ""DocMS"".""Documents"";";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
-        public void DeleteDocument(DocumentModel doc)
+        // -----------------------
+        // Dashboard Count: Offices
+        // -----------------------
+        public int CountOffices()
         {
-            Documents.Remove(doc);
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"SELECT COUNT(*) FROM ""DocMS"".""Offices"";";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
-        public IEnumerable<DocumentModel> Search(string keyword)
+        // -----------------------
+        // Dashboard Count: Today Uploads
+        // -----------------------
+        public int CountDocumentsUploadedToday()
         {
-            return Documents.Where(d =>
-                d.FileName.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                d.Office.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            using var conn = new NpgsqlConnection(_config.GetConnectionString("DefaultConnection"));
+            conn.Open();
+
+            string sql = @"
+                SELECT COUNT(*)
+                FROM ""DocMS"".""Documents""
+                WHERE ""UploadDate""::date = CURRENT_DATE;
+            ";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
     }
 }
