@@ -1,61 +1,130 @@
 @page "/upload"
 
+@using DocumentManagementSystem.Services
+@using DocumentManagementSystem.Models
+
+@inject DocumentService DocumentService
+@inject OfficeService OfficeService
+@rendermode InteractiveServer
+
 <h3>Upload Document</h3>
 
-<div class="mb-3">
-    <label class="form-label">Choose Document (PDF or CSV only)</label>
-    <InputFile OnChange="HandleFileUpload" />   @* FIXED *@
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Select Office</label>
-    <select class="form-select" @bind="SelectedOffice">
-        @foreach (var office in Offices)
-        {
-            <option value="@office">@office</option>
-        }
-    </select>
-</div>
-
-<button class="btn btn-success" @onclick="UploadFile">Upload</button>
-
-@if (!string.IsNullOrEmpty(Message))
+@if (!string.IsNullOrEmpty(SuccessMessage))
 {
-    <div class="alert alert-info mt-3">@Message</div>
+    <div class="alert alert-success">@SuccessMessage</div>
 }
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger">@ErrorMessage</div>
+}
+
+<div class="card p-3">
+
+    <!-- Office Selector -->
+    <div class="mb-3">
+        <label class="form-label">Select Office</label>
+        <select class="form-select" @bind="SelectedOfficeId">
+            <option value="0">-- Select Office --</option>
+            @foreach (var office in Offices)
+            {
+                <option value="@office.OfficeId">@office.OfficeName</option>
+            }
+        </select>
+    </div>
+
+    <!-- File Upload -->
+    <div class="mb-3">
+        <label class="form-label">Upload File</label>
+        <InputFile OnChange="HandleFileSelected" />
+    </div>
+
+    <button class="btn btn-primary" @onclick="SaveDocument" disabled="@IsUploading">
+        @(IsUploading ? "Uploading..." : "Upload Document")
+    </button>
+
+</div>
 
 @code {
     private IBrowserFile? SelectedFile;
-    private string SelectedOffice = "HR";
-    private string Message = "";
+    private List<OfficeModel> Offices = new();
+    private string? SuccessMessage;
+    private string? ErrorMessage;
 
-    private List<string> Offices = new()
-    {
-        "HR", "Accounting", "Admin", "Supply"
-    };
+    private int SelectedOfficeId;
+    private bool IsUploading = false;
 
-    // ❗ ONCHANGE method must take InputFileChangeEventArgs
-    private void HandleFileUpload(InputFileChangeEventArgs e)
+    protected override void OnInitialized()
     {
-        SelectedFile = e.File;
+        Offices = OfficeService.GetOffices();
     }
 
-    private async Task UploadFile()
+    private void HandleFileSelected(InputFileChangeEventArgs e)
     {
+        SelectedFile = e.File;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        Console.WriteLine("DEBUG: File selected: " + SelectedFile?.Name);
+    }
+
+    private async Task SaveDocument()
+    {
+        Console.WriteLine("DEBUG: SaveDocument() START");
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+
         if (SelectedFile == null)
         {
-            Message = "Please select a file.";
+            ErrorMessage = "Please select a file.";
             return;
         }
 
-        if (!(SelectedFile.ContentType == "application/pdf" ||
-              SelectedFile.ContentType == "text/csv"))
+        if (SelectedOfficeId == 0)
         {
-            Message = "Only PDF or CSV files are allowed.";
+            ErrorMessage = "Please select an office.";
             return;
         }
 
-        // Real saving later
-        Message = $"File '{SelectedFile.Name}' uploaded to '{SelectedOffice}'.";
+        IsUploading = true;
+
+        try
+        {
+            // Save file to server
+            var uploadFolder = Path.Combine("wwwroot", "uploads");
+            if (!Directory.Exists(uploadFolder))
+                Directory.CreateDirectory(uploadFolder);
+
+            var savePath = Path.Combine(uploadFolder, SelectedFile.Name);
+
+            Console.WriteLine("DEBUG: Saving file to " + savePath);
+
+            using (var stream = SelectedFile.OpenReadStream(long.MaxValue))
+            using (var fs = File.Create(savePath))
+            {
+                await stream.CopyToAsync(fs);
+            }
+
+            // Public file URL
+            string publicPath = "/uploads/" + SelectedFile.Name;
+
+            Console.WriteLine("DEBUG: Calling AddDocumentToDatabase");
+
+            DocumentService.AddDocumentToDatabase(
+                SelectedFile.Name,
+                SelectedOfficeId,
+                publicPath
+            );
+
+            SuccessMessage = "Document uploaded successfully!";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Upload failed: " + ex.Message;
+            Console.WriteLine("ERROR: " + ex.ToString());
+        }
+
+        IsUploading = false;
     }
 }

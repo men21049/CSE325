@@ -3,6 +3,8 @@
 @inject DocumentService DocumentService
 @inject UserService UserService
 @inject NavigationManager Nav
+@inject OfficeService OfficeService
+
 
 <h2>Admin Dashboard</h2>
 
@@ -59,7 +61,7 @@ else
         // Load values from services
         TotalDocuments = DocumentService.CountAllDocuments();
         TotalUsers = UserService.CountAllUsers();
-        TotalOffices = DocumentService.CountOffices();
+        TotalOffices = OfficeService.CountOffices();
         DocumentsToday = DocumentService.CountDocumentsUploadedToday();
 
         Loading = false;

@@ -1,43 +1,31 @@
 using DocumentManagementSystem.Components;
-using DocumentManagementSystem.Services;  // <-- required for services
+using DocumentManagementSystem.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------------------------------------------------------------------
-// REGISTER APPLICATION SERVICES (Document, Office, User)
-// ---------------------------------------------------------------------
+// SERVICES
 builder.Services.AddSingleton<DocumentService>();
 builder.Services.AddSingleton<OfficeService>();
 builder.Services.AddSingleton<UserService>();
 
-// ---------------------------------------------------------------------
-// Razor Components / Blazor Server setup
-// ---------------------------------------------------------------------
+// Blazor Server
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var app = builder.Build();
 
-// ---------------------------------------------------------------------
-// HTTP REQUEST PIPELINE
-// ---------------------------------------------------------------------
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();  // Enforces HTTPS for production
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-app.UseAntiforgery();   // CSRF protection
+app.UseAntiforgery();
 
-// ---------------------------------------------------------------------
-// Static Files + Routing
-// ---------------------------------------------------------------------
 app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-// ---------------------------------------------------------------------
 
 app.Run();

@@ -1,11 +1,27 @@
-@using DocumentManagementSystem.Model
-
 @page "/documents"
+
+@using DocumentManagementSystem.Services
+@using DocumentManagementSystem.Models
+
+@inject DocumentService DocumentService
+@inject OfficeService OfficeService
+@rendermode InteractiveServer
 
 <h3>Documents</h3>
 
+<!-- SEARCH BAR -->
 <input class="form-control mb-3" placeholder="Search documents..." @bind="SearchText" />
 
+<!-- OFFICE FILTER -->
+<select class="form-select mb-3" @bind="SelectedOfficeFilter">
+    <option value="0">All Offices</option>
+    @foreach (var o in Offices)
+    {
+        <option value="@o.OfficeId">@o.OfficeName</option>
+    }
+</select>
+
+<!-- DOCUMENT TABLE -->
 <table class="table table-striped">
     <thead>
         <tr>
@@ -20,30 +36,91 @@
         {
             <tr>
                 <td>@doc.FileName</td>
-                <td>@doc.Office</td>
+                <td>@doc.OfficeName</td>
                 <td>@doc.DateUploaded.ToShortDateString()</td>
                 <td>
-                    <button class="btn btn-sm btn-primary">View</button>
-                    <button class="btn btn-sm btn-warning">Edit</button>
-                    <button class="btn btn-sm btn-danger">Delete</button>
+                    <a class="btn btn-sm btn-primary" href="@doc.FilePath" target="_blank">View</a>
+                    <button class="btn btn-sm btn-warning" @onclick="() => OpenEdit(doc)">Edit</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteDocument(doc.DocumentId)">Delete</button>
                 </td>
             </tr>
         }
     </tbody>
 </table>
 
+<!-- EDIT FORM -->
+@if (ShowEditForm)
+{
+    <div class="card p-3 mt-3">
+        <h4>Edit Document</h4>
+
+        <label>File Name</label>
+        <input class="form-control mb-2" @bind="EditDoc.FileName" />
+
+        <label>Office</label>
+        <select class="form-select mb-2" @bind="EditDoc.OfficeId">
+            @foreach (var o in Offices)
+            {
+                <option value="@o.OfficeId">@o.OfficeName</option>
+            }
+        </select>
+
+        <button class="btn btn-success" @onclick="SaveEdit">Save</button>
+        <button class="btn btn-secondary ms-2" @onclick="() => ShowEditForm = false">Cancel</button>
+    </div>
+}
+
 @code {
     private string SearchText = "";
+    private int SelectedOfficeFilter = 0;
 
-    // ❗RENAMED so it doesn't conflict with the page class
-    private List<DocumentModel> DocumentList = new()
+    private List<DocumentModel> DocumentList = new();
+    private List<OfficeModel> Offices = new();
+
+    private bool ShowEditForm = false;
+    private DocumentModel EditDoc = new();
+
+    // LOAD DATA
+    protected override void OnInitialized()
     {
-        new DocumentModel { FileName = "BudgetReport.pdf", Office = "Accounting", DateUploaded = DateTime.Now },
-        new DocumentModel { FileName = "EmployeeList.csv", Office = "HR", DateUploaded = DateTime.Now },
-    };
+        DocumentList = DocumentService.GetAllDocuments();
+        Offices = OfficeService.GetOffices();
+    }
 
-    // ❗Updated to use DocumentList
+    // FILTER DOCUMENTS
     private IEnumerable<DocumentModel> FilteredDocuments =>
-        DocumentList.Where(d => string.IsNullOrEmpty(SearchText) ||
-                                d.FileName.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+        DocumentList.Where(d =>
+            (SelectedOfficeFilter == 0 || d.OfficeId == SelectedOfficeFilter) &&
+            (string.IsNullOrWhiteSpace(SearchText) ||
+             d.FileName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+             d.OfficeName.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+        );
+
+    // DELETE DOCUMENT
+    private void DeleteDocument(int id)
+    {
+        DocumentService.DeleteDocument(id);
+        DocumentList = DocumentService.GetAllDocuments();
+    }
+
+    // OPEN EDIT FORM
+    private void OpenEdit(DocumentModel doc)
+    {
+        EditDoc = new DocumentModel
+        {
+            DocumentId = doc.DocumentId,
+            FileName = doc.FileName,
+            OfficeId = doc.OfficeId
+        };
+
+        ShowEditForm = true;
+    }
+
+    // SAVE EDIT
+    private void SaveEdit()
+    {
+        DocumentService.UpdateDocument(EditDoc);
+        DocumentList = DocumentService.GetAllDocuments();
+        ShowEditForm = false;
+    }
 }

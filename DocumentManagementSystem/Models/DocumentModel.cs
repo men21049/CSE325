@@ -1,9 +1,12 @@
-namespace DocumentManagementSystem.Model
+namespace DocumentManagementSystem.Models
 {
     public class DocumentModel
     {
-        public string FileName { get; set; }
-        public string Office { get; set; }
+        public int DocumentId { get; set; }
+        public string FileName { get; set; } = "";
+        public int OfficeId { get; set; }
+        public string OfficeName { get; set; } = ""; // Joined from Offices table
         public DateTime DateUploaded { get; set; }
+        public string FilePath { get; set; } = "";
     }
 }
