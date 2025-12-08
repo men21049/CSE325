@@ -1,16 +1,15 @@
-@page "/logout"
 @using DocumentManagementSystem.Services
 @inject AuthenticationStateService AuthService
 @inject NavigationManager Nav
 @rendermode InteractiveServer
-<AuthRedirect />
+
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // Logout the user
-        AuthService.Logout();
-
-        // Redirect to login page
-        Nav.NavigateTo("/login", forceLoad: true);
+        await AuthService.InitializeAsync();
+        if (!AuthService.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+        }
     }
 }

@@ -1,4 +1,7 @@
 @inherits LayoutComponentBase
+@using DocumentManagementSystem.Services
+@inject UserService UserService
+@inject AuthenticationStateService AuthService
 
 <div class="page">
     <div class="sidebar">
@@ -7,7 +10,14 @@
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">User name</a>
+            @if (CurrentUsername != null)
+            {
+                @CurrentUsername
+            }
+            else
+            {
+                <text>Loading...</text>
+            }
         </div>
 
         <article class="content px-4">
@@ -21,3 +31,25 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">??</span>
 </div>
+
+@code {
+    private string? CurrentUsername = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUserAsync();
+    }
+
+    private async Task LoadCurrentUserAsync()
+    {
+        try
+        {
+            await AuthService.InitializeAsync();
+            CurrentUsername = AuthService.CurrentUsername ?? "Guest";
+        }
+        catch
+        {
+            CurrentUsername = "Guest";
+        }
+    }
+}

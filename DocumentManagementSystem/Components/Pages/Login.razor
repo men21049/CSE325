@@ -1,19 +1,134 @@
 @page "/login"
+@layout EmptyLayout
+@using DocumentManagementSystem.Services
+@using DocumentManagementSystem.Components.Layout
+@inject UserService UserService
+@inject AuthenticationStateService AuthService
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 
-<PageTitle>Login</PageTitle>
+<div class="login-container">
+    <!-- Left Panel - Blue Background -->
+    <div class="login-left-panel">
+        <div class="login-branding">
+            <h1 class="login-brand-name">DMS</h1>
+            <p class="login-brand-subtitle">Document Management System</p>
+        </div>
+        <div class="login-description">
+            <p>Easily manage all your companies documents.</p>
+        </div>
+        <div class="login-copyright">
+            <p>© 2025 DMS. All rights reserved.</p>
+        </div>
+    </div>
 
-<h1>Login</h1>
+    <!-- Right Panel - White Background -->
+    <div class="login-right-panel">
+        <div class="login-form-container">
+            <h2 class="login-welcome">Welcome Back!</h2>
 
-<p role="status">Current count: @currentCount</p>
+            <div class="login-form">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input id="email" type="email" class="form-control login-input" @bind="Email"
+                        @onkeypress="HandleKeyPress" />
+                </div>
 
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input id="password" type="password" class="form-control login-input" @bind="Password"
+                        @onkeypress="HandleKeyPress" />
+                </div>
+
+                <button class="btn btn-primary login-button" @onclick="DoLogin" disabled="@IsLoading">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <text>Logging in...</text>
+                    }
+                    else
+                    {
+                        <text>Login Now</text>
+                    }
+                </button>
+
+                @if (!string.IsNullOrEmpty(Error))
+                {
+                    <div class="alert alert-danger mt-3 login-error">@Error</div>
+                }
+
+                <div class="login-forgot-password">
+                    <span>Forgot password?</span>
+                    <a href="#" class="login-forgot-link" @onclick="HandleForgotPassword" @onclick:preventDefault>Click
+                        here.</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
-    private int currentCount = 0;
+    private string Email = "";
+    private string Password = "";
+    private string Error = "";
+    private bool IsLoading = false;
 
-    private void IncrementCount()
+    private async Task DoLogin()
     {
-        currentCount++;
+        Error = "";
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Simulate async operation
+            await Task.Delay(300);
+
+            // Use email as username for now (or extract username from email)
+            var username = Email.Contains("@") ? Email.Split('@')[0] : Email;
+
+            if (await AuthService.LoginAsync(username, Password))
+            {
+                // Get the role from the authenticated user
+                var role = AuthService.CurrentUserRole ?? "User";
+
+                if (role == "Admin")
+                {
+                    Nav.NavigateTo("/");
+                }
+                else
+                {
+                    Nav.NavigateTo("/");
+                }
+            }
+            else
+            {
+                Error = "Invalid email or password.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = "An error occurred. Please try again.";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !IsLoading)
+        {
+            await DoLogin();
+        }
+    }
+
+    private void HandleForgotPassword()
+    {
+        // Placeholder for forgot password functionality
+        Error = "Forgot password functionality is not yet implemented.";
+        StateHasChanged();
     }
 }

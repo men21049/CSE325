@@ -1,5 +1,5 @@
 using DocumentManagementSystem.Model;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace DocumentManagementSystem.Services
 {
@@ -17,30 +17,22 @@ namespace DocumentManagementSystem.Services
         public OfficeService(DatabaseConnection dbConnection)
         {
             _dbConnection = dbConnection;
-            // Inicializar con oficinas por defecto
-            _offices = new List<OfficeInfo>
-            {
-                new OfficeInfo { OfficeID = 1, OfficeName = "HR" },
-                new OfficeInfo { OfficeID = 2, OfficeName = "Accounting" },
-                new OfficeInfo { OfficeID = 3, OfficeName = "Admin" },
-                new OfficeInfo { OfficeID = 4, OfficeName = "Supply" }
-            };
         }
 
         private async Task LoadOfficesAsync()
         {
             try
             {
-                var sql = "SELECT OfficeID, OfficeName FROM Offices ORDER BY OfficeName";
-                var results = await _dbConnection.ExecuteQueryAsync(sql);
-                
+                var sql = "SELECT \"OfficeId\", \"OfficeName\" FROM \"DocMS\".\"Offices\" ORDER BY \"OfficeName\"";
+                var results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>());
+
                 if (results.Count > 0)
                 {
                     _offices = results
-                        .Where(row => row["OfficeID"] != null && row["OfficeName"] != null)
+                        .Where(row => row["OfficeId"] != null && row["OfficeName"] != null)
                         .Select(row => new OfficeInfo
                         {
-                            OfficeID = Convert.ToInt32(row["OfficeID"]),
+                            OfficeID = Convert.ToInt32(row["OfficeId"]),
                             OfficeName = row["OfficeName"].ToString()!
                         })
                         .ToList();
@@ -48,8 +40,8 @@ namespace DocumentManagementSystem.Services
             }
             catch
             {
-                // Si falla, mantener las oficinas por defecto
-                // No lanzar excepción para evitar que el servicio falle
+                _offices = new List<OfficeInfo>();
+                throw;
             }
         }
 
@@ -69,16 +61,17 @@ namespace DocumentManagementSystem.Services
             {
                 try
                 {
-                    var sql = "INSERT INTO Offices (OfficeName) VALUES (@OfficeName)";
-                    var parameters = new[] { new SqlParameter("@OfficeName", officeName) };
+                    // En PostgreSQL, los nombres de tablas y columnas sin comillas se convierten a minúsculas
+                    var sql = "INSERT INTO \"DocMS\".\"Offices\" (\"OfficeName\") VALUES (@OfficeName)";
+                    var parameters = new[] { new NpgsqlParameter("@OfficeName", officeName) };
                     await _dbConnection.ExecuteNonQueryAsync(sql, parameters);
-                    
+
                     // Recargar las oficinas para obtener el nuevo ID
                     await LoadOfficesAsync();
                 }
                 catch
                 {
-                   throw;
+                    throw;
                 }
             }
         }
@@ -90,10 +83,11 @@ namespace DocumentManagementSystem.Services
 
             try
             {
-                var sql = "DELETE FROM Offices WHERE OfficeName = @OfficeName";
-                var parameters = new[] { new SqlParameter("@OfficeName", officeName) };
+                // En PostgreSQL, los nombres de tablas y columnas sin comillas se convierten a minúsculas
+                var sql = "DELETE FROM \"DocMS\".\"Offices\" WHERE \"OfficeName\" = @OfficeName";
+                var parameters = new[] { new NpgsqlParameter("@OfficeName", officeName) };
                 await _dbConnection.ExecuteNonQueryAsync(sql, parameters);
-                
+
                 var officeToRemove = _offices.FirstOrDefault(o => o.OfficeName == officeName);
                 if (officeToRemove != null)
                 {
@@ -111,7 +105,7 @@ namespace DocumentManagementSystem.Services
             }
         }
 
-        public void AddOffice(string office)
+        /*public void AddOffice(string office)
         {
             if (!_offices.Any(o => o.OfficeName == office))
             {
@@ -127,6 +121,6 @@ namespace DocumentManagementSystem.Services
             {
                 _offices.Remove(officeToRemove);
             }
-        }
+        }*/
     }
 }

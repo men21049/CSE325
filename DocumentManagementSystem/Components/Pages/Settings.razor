@@ -1,80 +1,328 @@
 @page "/settings"
-
+@using DocumentManagementSystem.Services
+@inject UserService UserService
+@rendermode InteractiveServer
+<AuthRedirect />
 <PageTitle>Settings</PageTitle>
 
-<h1>Settings</h1>
+<h1>User Management</h1>
 
-<div>
-    <ul>
-        <li> <a href="">Management Departments</a></li>
-        <li><a href="">Manage users</a></li>
-    </ul>
+@if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="alert alert-success mt-3">@SuccessMessage</div>
+}
 
-    <div>
-        <h3>Manage Departments</h3>
-        <div class="table-responsive">
-            <table class="table table-hover table-brand">
-                <thead>
-                    <tr>
-                        <th>Department ID</th>
-                        <th>Department Name</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Example row -->
-                    <tr>
-                        <td>1</td>
-                        <td>Human Resources</td>
-                        <td>
-                            <button>Edit</button>
-                            <button>Delete</button>
-                        </td>
-                    </tr>
-                    <!-- More rows would be populated here -->
-                </tbody>
-            </table>
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger mt-3">@Error</div>
+}
+
+<div class="row">
+    <!-- User List -->
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Users</h5>
+                <button class="btn btn-sm btn-primary" @onclick="AddNewUser">+ New User</button>
+            </div>
+            <div class="card-body">
+                @if (users == null)
+                {
+                    <p>Loading users...</p>
+                }
+                else if (users.Count == 0)
+                {
+                    <p class="text-muted">No users found.</p>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var user in users)
+                        {
+                            <button type="button"
+                                class="list-group-item list-group-item-action @(SelectedUserId == user.UserID ? "active" : "")"
+                                @onclick="() => SelectUser(user.UserID)">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>@user.Username</strong><br />
+                                        <small class="text-muted">@user.Role</small>
+                                    </div>
+                                </div>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     </div>
 
-    <div>
-        <h3>Manage Users</h3>
-        <a href="">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="black" class="bi bi-person-plus"
-                viewBox="0 0 18 18">
-                <path
-                    d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" />
-                <path fill-rule="evenodd"
-                    d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5" />
-            </svg>
-            Add New User
-        </a>
-        <div class="table-responsive">
-            <table class="table table-hover table-brand">
-                <thead>
-                    <tr>
-                        <th>User ID</th>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Department</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Example row -->
-                    <tr>
-                        <td>1</td>
-                        <td>johndoe</td>
-                        <td>email@email.com</td>
-                        <td>Human Resources</td>
-                        <td>
-                            <button>Edit</button>
-                            <button>Delete</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    <!-- User Form -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">@(IsNewUser ? "Add New User" : "Edit User")</h5>
+            </div>
+            <div class="card-body">
+                <div class="login-form">
+                    <div class="mb-3">
+                        <label for="Username" class="form-label">Username</label>
+                        <input id="Username" type="text" class="form-control settings-input" @bind="Username"
+                            disabled="@IsLoading" />
+                    </div>
 
+                    <div class="mb-3">
+                        <label for="Role" class="form-label">Role</label>
+                        <select id="Role" class="form-select settings-input" @bind="Role" disabled="@IsLoading">
+                            <option value="">Select a role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="User">User</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            Password @(IsNewUser ? "(Required)" : "(Leave blank to keep current password)")
+                        </label>
+                        <input id="password" type="password" class="form-control login-input" @bind="Password"
+                            disabled="@IsLoading" />
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary login-button" @onclick="SaveChanges"
+                            disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <text>@(IsNewUser ? "Creating..." : "Updating...")</text>
+                            }
+                            else
+                            {
+                                <text>@(IsNewUser ? "Create User" : "Update User")</text>
+                            }
+                        </button>
+
+                        @if (!IsNewUser && SelectedUserId > 0)
+                        {
+                            <button class="btn btn-secondary" @onclick="CancelEdit" disabled="@IsLoading">
+                                Cancel
+                            </button>
+                            <button class="btn btn-danger" @onclick="DeleteUser" disabled="@IsLoading">
+                                Delete
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+@code {
+    private List<UserService.UserModel>? users;
+    private int SelectedUserId = 0;
+    private string Username = "";
+    private string Role = "";
+    private string Password = "";
+    private string Error = "";
+    private string SuccessMessage = "";
+    private bool IsLoading = false;
+    private bool IsNewUser = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        try
+        {
+            users = await UserService.GetAllUsersAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Error loading users: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectUser(int userId)
+    {
+        try
+        {
+            SelectedUserId = userId;
+            IsNewUser = false;
+            Error = "";
+            SuccessMessage = "";
+
+            var user = await UserService.GetUserByIdAsync(userId);
+            if (user != null)
+            {
+                Username = user.Username;
+                Role = user.Role;
+                Password = ""; // Don't show password
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Error loading user: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void AddNewUser()
+    {
+        SelectedUserId = 0;
+        IsNewUser = true;
+        Username = "";
+        Role = "";
+        Password = "";
+        Error = "";
+        SuccessMessage = "";
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        AddNewUser();
+    }
+
+    private bool IsFormValid()
+    {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Role))
+            return false;
+
+        if (IsNewUser && string.IsNullOrWhiteSpace(Password))
+            return false;
+
+        return true;
+    }
+
+    private async Task SaveChanges()
+    {
+        Error = "";
+        SuccessMessage = "";
+
+        // Validate username is not empty
+        if (string.IsNullOrWhiteSpace(Username))
+        {
+            Error = "Username is required.";
+            StateHasChanged();
+            return;
+        }
+
+        // Validate role is not empty
+        if (string.IsNullOrWhiteSpace(Role))
+        {
+            Error = "Role is required.";
+            StateHasChanged();
+            return;
+        }
+
+        // Validate password is present for new users
+        if (IsNewUser && string.IsNullOrWhiteSpace(Password))
+        {
+            Error = "Password is required for new users.";
+            StateHasChanged();
+            return;
+        }
+
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Check if username already exists
+            bool usernameExists = await UserService.UsernameExistsAsync(Username, IsNewUser ? null : SelectedUserId);
+            if (usernameExists)
+            {
+                Error = "Username already exists. Please choose a different username.";
+                IsLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            bool success;
+            if (IsNewUser)
+            {
+                // Create new user
+                success = await UserService.CreateUserAsync(Username, Password, Role);
+                if (success)
+                {
+                    SuccessMessage = "User created successfully!";
+                    await LoadUsersAsync();
+                    AddNewUser(); // Clear form
+                }
+                else
+                {
+                    Error = "Failed to create user. Please check the console for errors or try again.";
+                }
+            }
+            else
+            {
+                // Update existing user
+                success = await UserService.UpdateUserAsync(SelectedUserId, Username, Password, Role);
+                if (success)
+                {
+                    SuccessMessage = "User updated successfully!";
+                    await LoadUsersAsync();
+                    // Reload selected user to show changes
+                    await SelectUser(SelectedUserId);
+                }
+                else
+                {
+                    Error = "Failed to update user. Please check the console for errors or try again.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = $"An error occurred: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                Error += $" Inner error: {ex.InnerException.Message}";
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        if (SelectedUserId <= 0) return;
+
+        Error = "";
+        SuccessMessage = "";
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            bool success = await UserService.DeleteUserAsync(SelectedUserId);
+            if (success)
+            {
+                SuccessMessage = "User deleted successfully!";
+                await LoadUsersAsync();
+                AddNewUser(); // Clear form
+            }
+            else
+            {
+                Error = "Failed to delete user. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+}
