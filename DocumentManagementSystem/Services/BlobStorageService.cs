@@ -24,7 +24,6 @@ namespace DocumentManagementSystem.Services
             try
             {
                 var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
-                // Crear el contenedor sin acceso público desde el inicio
                 await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
             }
             catch

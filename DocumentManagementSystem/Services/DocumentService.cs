@@ -9,7 +9,7 @@ namespace DocumentManagementSystem.Services
     {
         private readonly DatabaseConnection _dbConnection;
         private readonly IConfiguration _configuration;
-        private List<DocumentModel> _documents = new();
+        private List<DocumentManagementSystem.Model.DocumentModel> _documents = new();
 
         private string BlobUrl = "";
 
@@ -23,17 +23,6 @@ namespace DocumentManagementSystem.Services
             _configuration = configuration;
         }
 
-        public class DocumentModel
-        {
-            public int DocumentID { get; set; }
-            public string FileName { get; set; } = string.Empty;
-            public string FilePath { get; set; } = string.Empty;
-            public string FileType { get; set; } = string.Empty;
-            public DateTime UploadDate { get; set; }
-            public int OfficeID { get; set; }
-            public string OfficeName { get; set; } = string.Empty;
-        }
-
         public async Task LoadDocumentsAsync()
         {
             try
@@ -44,7 +33,7 @@ namespace DocumentManagementSystem.Services
                 if (results.Count > 0)
                 {
                     _documents = results
-                        .Select(row => new DocumentModel
+                        .Select(row => new DocumentManagementSystem.Model.DocumentModel
                         {
                             DocumentID = row["DocumentId"] != null ? Convert.ToInt32(row["DocumentId"]) : 0,
                             FileName = row["FileName"]?.ToString() ?? string.Empty,
@@ -59,12 +48,12 @@ namespace DocumentManagementSystem.Services
             }
             catch
             {
-                _documents = new List<DocumentModel>();
+                _documents = new List<DocumentManagementSystem.Model.DocumentModel>();
                 throw;
             }
         }
 
-        public IEnumerable<DocumentModel> GetDocuments() => _documents;
+        public IEnumerable<DocumentManagementSystem.Model.DocumentModel> GetDocuments() => _documents;
 
         public async Task RefreshDocumentsAsync()
         {
@@ -130,7 +119,7 @@ namespace DocumentManagementSystem.Services
             }
         }
 
-        public async Task<List<DocumentModel>> SearchDocumentsAsync(string searchTerm)
+        public async Task<List<DocumentManagementSystem.Model.DocumentModel>> SearchDocumentsAsync(string searchTerm)
         {
             try
             {
@@ -141,7 +130,7 @@ namespace DocumentManagementSystem.Services
                 if (results.Count > 0)
                 {
                     _documents = results
-                        .Select(row => new DocumentModel
+                        .Select(row => new DocumentManagementSystem.Model.DocumentModel
                         {
                             DocumentID = row["DocumentId"] != null ? Convert.ToInt32(row["DocumentId"]) : 0,
                             FileName = row["FileName"]?.ToString() ?? string.Empty,
@@ -155,14 +144,14 @@ namespace DocumentManagementSystem.Services
                 }
                 else
                 {
-                    _documents = new List<DocumentModel>();
+                    _documents = new List<DocumentManagementSystem.Model.DocumentModel>();
                 }
 
                 return _documents;
             }
             catch
             {
-                _documents = new List<DocumentModel>();
+                _documents = new List<DocumentManagementSystem.Model.DocumentModel>();
                 throw;
             }
 

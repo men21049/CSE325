@@ -161,7 +161,7 @@
             {
                 Username = user.Username;
                 Role = user.Role;
-                Password = ""; // Don't show password
+                Password = ""; 
             }
             StateHasChanged();
         }
@@ -205,7 +205,7 @@
         Error = "";
         SuccessMessage = "";
 
-        // Validate username is not empty
+   
         if (string.IsNullOrWhiteSpace(Username))
         {
             Error = "Username is required.";

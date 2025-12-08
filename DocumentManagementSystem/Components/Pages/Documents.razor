@@ -95,7 +95,7 @@ else
     </div>
 }
 
-<!-- Modal de Confirmación de Eliminación -->
+
 @if (ShowConfirmDeleteModal)
 {
     <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
@@ -129,7 +129,6 @@ else
     <div class="modal-backdrop fade show"></div>
 }
 
-<!-- Modal de Éxito -->
 @if (ShowSuccessModal)
 {
     <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
@@ -164,7 +163,7 @@ else
     private string BlobUrl = "";
     private List<OfficeService.OfficeInfo> OfficeList = new();
 
-    // Variables para el modal de eliminación
+
     private bool ShowConfirmDeleteModal = false;
     private bool ShowSuccessModal = false;
     private bool IsDeleting = false;
@@ -224,16 +223,7 @@ else
             Message = "File uploaded successfully.";
             IsSuccess = true;
             await DocumentService.RefreshDocumentsAsync();
-            documents = DocumentService.GetDocuments()
-            .Select(d => new DocumentManagementSystem.Model.DocumentModel
-            {
-                DocumentID = d.DocumentID,
-                FileName = d.FileName,
-                FileType = d.FileType,
-                OfficeID = d.OfficeID,
-                UploadDate = d.UploadDate,
-                FilePath = d.FilePath
-            }).ToList();
+            documents = DocumentService.GetDocuments().ToList();
             StateHasChanged();
         }
         catch (Exception ex)
@@ -260,31 +250,11 @@ else
         if (string.IsNullOrWhiteSpace(SearchText))
         {
             await DocumentService.RefreshDocumentsAsync();
-            documents = DocumentService.GetDocuments()
-            .Select(d => new DocumentManagementSystem.Model.DocumentModel
-            {
-                DocumentID = d.DocumentID,
-                FileName = d.FileName,
-                FileType = d.FileType,
-                OfficeID = d.OfficeID,
-                UploadDate = d.UploadDate,
-                FilePath = d.FilePath
-            }).ToList();
+            documents = DocumentService.GetDocuments().ToList();
         }
         else
         {
-            var searchResults = await DocumentService.SearchDocumentsAsync(SearchText);
-            documents = searchResults
-            .Select(d => new DocumentManagementSystem.Model.DocumentModel
-            {
-                DocumentID = d.DocumentID,
-                FileName = d.FileName,
-                FileType = d.FileType,
-                OfficeID = d.OfficeID,
-                UploadDate = d.UploadDate,
-                FilePath = d.FilePath,
-                OfficeName = d.OfficeName
-            }).ToList();
+            documents = await DocumentService.SearchDocumentsAsync(SearchText);
         }
         StateHasChanged();
     }
@@ -312,30 +282,21 @@ else
 
         try
         {
-            // Guardar el nombre del archivo para el modal de éxito
+        
             DeletedFileName = DocumentToDelete.FileName;
 
-            // Eliminar el documento
+       
             await DocumentService.DeleteDocumentAsync(DocumentToDelete.DocumentID);
 
-            // Cerrar el modal de confirmación
+          
             ShowConfirmDeleteModal = false;
             DocumentToDelete = null;
 
-            // Recargar los documentos desde la base de datos
+         
             await DocumentService.RefreshDocumentsAsync();
-            documents = DocumentService.GetDocuments()
-            .Select(d => new DocumentManagementSystem.Model.DocumentModel
-            {
-                DocumentID = d.DocumentID,
-                FileName = d.FileName,
-                FileType = d.FileType,
-                OfficeID = d.OfficeID,
-                UploadDate = d.UploadDate,
-                FilePath = d.FilePath
-            }).ToList();
+            documents = DocumentService.GetDocuments().ToList();
 
-            // Mostrar el modal de éxito
+      
             ShowSuccessModal = true;
         }
         catch (Exception ex)
