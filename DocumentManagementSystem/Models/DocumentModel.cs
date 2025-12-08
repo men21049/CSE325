@@ -10,8 +10,10 @@ namespace DocumentManagementSystem.Model
         public int OfficeID { get; set; }
         public string OfficeName { get; set; } = string.Empty;
         
+        // Propiedad de navegación para EF Core
+        public Office? Office { get; set; }
+        
         // Propiedades de compatibilidad
-        public string Office => OfficeName;
         public DateTime DateUploaded => UploadDate;
     }
 }

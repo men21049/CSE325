@@ -3,7 +3,7 @@ namespace DocumentManagementSystem.Model
     using System;
     using System.Data;
     using System.Data.Common;
-    using Microsoft.Data.SqlClient;
+    using Npgsql;
     using Microsoft.Extensions.Configuration;
 
     public class DatabaseConnection
@@ -12,21 +12,21 @@ namespace DocumentManagementSystem.Model
 
         public DatabaseConnection(IConfiguration configuration)
         {
-            connectionString = configuration.GetConnectionString("AzureSqlConnection") 
-                ?? throw new InvalidOperationException("Azure SQL connection string not found in configuration");
+            connectionString = configuration.GetConnectionString("PostgresDb")
+                ?? throw new InvalidOperationException("PostgreSQL connection string not found in configuration");
         }
 
         public IDbConnection CreateConnection()
         {
-            return new SqlConnection(connectionString);
+            return new NpgsqlConnection(connectionString);
         }
 
-        public async Task<DbDataReader> ExecuteReaderAsync(string sql, params SqlParameter[] parameters)
+        public async Task<DbDataReader> ExecuteReaderAsync(string sql, params NpgsqlParameter[] parameters)
         {
-            using var connection = new SqlConnection(connectionString);
+            var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, connection);
-            
+            using var command = new NpgsqlCommand(sql, connection);
+
             if (parameters != null && parameters.Length > 0)
             {
                 command.Parameters.AddRange(parameters);
@@ -35,14 +35,14 @@ namespace DocumentManagementSystem.Model
             return await command.ExecuteReaderAsync(CommandBehavior.CloseConnection);
         }
 
-        public async Task<List<Dictionary<string, object>>> ExecuteQueryAsync(string sql, params SqlParameter[] parameters)
+        public async Task<List<Dictionary<string, object>>> ExecuteQueryAsync(string sql, Dictionary<string, object> parameters1, params NpgsqlParameter[] parameters)
         {
             var results = new List<Dictionary<string, object>>();
-            
-            using var connection = new SqlConnection(connectionString);
+
+            using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, connection);
-            
+            using var command = new NpgsqlCommand(sql, connection);
+
             if (parameters != null && parameters.Length > 0)
             {
                 command.Parameters.AddRange(parameters);
@@ -62,12 +62,12 @@ namespace DocumentManagementSystem.Model
             return results;
         }
 
-        public async Task<int> ExecuteNonQueryAsync(string sql, params SqlParameter[] parameters)
+        public async Task<int> ExecuteNonQueryAsync(string sql, params NpgsqlParameter[] parameters)
         {
-            using var connection = new SqlConnection(connectionString);
+            using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, connection);
-            
+            using var command = new NpgsqlCommand(sql, connection);
+
             if (parameters != null && parameters.Length > 0)
             {
                 command.Parameters.AddRange(parameters);
@@ -76,12 +76,12 @@ namespace DocumentManagementSystem.Model
             return await command.ExecuteNonQueryAsync();
         }
 
-        public async Task<object?> ExecuteScalarAsync(string sql, params SqlParameter[] parameters)
+        public async Task<object?> ExecuteScalarAsync(string sql, params NpgsqlParameter[] parameters)
         {
-            using var connection = new SqlConnection(connectionString);
+            using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
-            using var command = new SqlCommand(sql, connection);
-            
+            using var command = new NpgsqlCommand(sql, connection);
+
             if (parameters != null && parameters.Length > 0)
             {
                 command.Parameters.AddRange(parameters);
@@ -90,13 +90,13 @@ namespace DocumentManagementSystem.Model
             return await command.ExecuteScalarAsync();
         }
 
-        public async Task<int> ExecuteTransactionAsync(Func<SqlConnection, SqlTransaction, Task<int>> transactionAction)
+        public async Task<int> ExecuteTransactionAsync(Func<NpgsqlConnection, NpgsqlTransaction, Task<int>> transactionAction)
         {
-            using var connection = new SqlConnection(connectionString);
+            using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
             var dbTransaction = await connection.BeginTransactionAsync();
-            using var transaction = (SqlTransaction)dbTransaction;
-            
+            using var transaction = (NpgsqlTransaction)dbTransaction;
+
             try
             {
                 var rowsAffected = await transactionAction(connection, transaction);

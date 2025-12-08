@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @using DocumentManagementSystem.Services
 @inject OfficeService OfficeService
-
+<AuthRedirect />
 <h3>Offices</h3>
 
 <div class="input-group mb-3">
@@ -39,8 +39,6 @@
         }
         catch (Exception ex)
         {
-            // Si falla la carga, usar las oficinas por defecto
-            OfficeList = OfficeService.GetOffices().ToList();
             Message = $"Warning: Could not load offices from database. Using default list. Error: {ex.Message}";
         }
     }
