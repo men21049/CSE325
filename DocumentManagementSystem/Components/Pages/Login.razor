@@ -29,8 +29,8 @@
 
             <div class="login-form">
                 <div class="mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input id="email" type="email" class="form-control login-input" @bind="Email"
+                    <label for="username" class="form-label">User</label>
+                    <input id="username" type="text" class="form-control login-input" @bind="Email"
                         @onkeypress="HandleKeyPress" />
                 </div>
 
@@ -57,11 +57,6 @@
                     <div class="alert alert-danger mt-3 login-error">@Error</div>
                 }
 
-                <div class="login-forgot-password">
-                    <span>Forgot password?</span>
-                    <a href="#" class="login-forgot-link" @onclick="HandleForgotPassword" @onclick:preventDefault>Click
-                        here.</a>
-                </div>
             </div>
         </div>
     </div>
@@ -81,34 +76,59 @@
 
         try
         {
-            // Simulate async operation
-            await Task.Delay(300);
+            // Validate inputs
+            var username = Email?.Trim() ?? string.Empty;
+            var password = Password ?? string.Empty;
 
-            // Use email as username for now (or extract username from email)
-            var username = Email.Contains("@") ? Email.Split('@')[0] : Email;
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                Error = "Username is required.";
+                IsLoading = false;
+                StateHasChanged();
+                return;
+            }
 
-            if (await AuthService.LoginAsync(username, Password))
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                Error = "Password is required.";
+                IsLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+
+            Console.WriteLine($"[LOGIN PAGE] Login attempt - Username: '{username}', Password length: {password.Length}");
+
+            bool loginResult = await AuthService.LoginAsync(username, password);
+            
+            if (loginResult)
             {
                 // Get the role from the authenticated user
                 var role = AuthService.CurrentUserRole ?? "User";
+                var currentUsername = AuthService.CurrentUsername ?? "";
+                Console.WriteLine($"[LOGIN PAGE] Login successful - Username: {currentUsername}, Role: {role}");
 
-                if (role == "Admin")
-                {
-                    Nav.NavigateTo("/");
-                }
-                else
-                {
-                    Nav.NavigateTo("/");
-                }
+                // Wait a moment to ensure state is updated
+                await Task.Delay(100);
+                
+                // Navigate to home page
+                Nav.NavigateTo("/");
             }
             else
             {
-                Error = "Invalid email or password.";
+                Error = "Invalid username or password. Please check your credentials and try again.";
+                Console.WriteLine("[LOGIN PAGE] Login failed - Invalid credentials");
             }
         }
         catch (Exception ex)
         {
-            Error = "An error occurred. Please try again.";
+            Error = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"[LOGIN PAGE] Exception: {ex.Message}");
+            Console.WriteLine($"[LOGIN PAGE] Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"[LOGIN PAGE] Inner exception: {ex.InnerException.Message}");
+            }
         }
         finally
         {
@@ -125,10 +145,4 @@
         }
     }
 
-    private void HandleForgotPassword()
-    {
-        // Placeholder for forgot password functionality
-        Error = "Forgot password functionality is not yet implemented.";
-        StateHasChanged();
-    }
 }

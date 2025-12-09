@@ -7,6 +7,8 @@
     protected override async Task OnInitializedAsync()
     {
         await AuthService.InitializeAsync();
+
+        
         if (!AuthService.IsAuthenticated)
         {
             Nav.NavigateTo("/login");

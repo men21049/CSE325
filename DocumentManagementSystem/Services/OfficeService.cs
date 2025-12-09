@@ -61,12 +61,10 @@ namespace DocumentManagementSystem.Services
             {
                 try
                 {
-                    // En PostgreSQL, los nombres de tablas y columnas sin comillas se convierten a minúsculas
                     var sql = "INSERT INTO \"DocMS\".\"Offices\" (\"OfficeName\") VALUES (@OfficeName)";
                     var parameters = new[] { new NpgsqlParameter("@OfficeName", officeName) };
                     await _dbConnection.ExecuteNonQueryAsync(sql, parameters);
 
-                    // Recargar las oficinas para obtener el nuevo ID
                     await LoadOfficesAsync();
                 }
                 catch
@@ -83,7 +81,6 @@ namespace DocumentManagementSystem.Services
 
             try
             {
-                // En PostgreSQL, los nombres de tablas y columnas sin comillas se convierten a minúsculas
                 var sql = "DELETE FROM \"DocMS\".\"Offices\" WHERE \"OfficeName\" = @OfficeName";
                 var parameters = new[] { new NpgsqlParameter("@OfficeName", officeName) };
                 await _dbConnection.ExecuteNonQueryAsync(sql, parameters);
@@ -96,7 +93,6 @@ namespace DocumentManagementSystem.Services
             }
             catch
             {
-                // Si falla la eliminación en BD, solo remover de la lista en memoria
                 var officeToRemove = _offices.FirstOrDefault(o => o.OfficeName == officeName);
                 if (officeToRemove != null)
                 {
@@ -105,22 +101,5 @@ namespace DocumentManagementSystem.Services
             }
         }
 
-        /*public void AddOffice(string office)
-        {
-            if (!_offices.Any(o => o.OfficeName == office))
-            {
-                var maxId = _offices.Count > 0 ? _offices.Max(o => o.OfficeID) : 0;
-                _offices.Add(new OfficeInfo { OfficeID = maxId + 1, OfficeName = office });
-            }
-        }
-
-        public void RemoveOffice(string office)
-        {
-            var officeToRemove = _offices.FirstOrDefault(o => o.OfficeName == office);
-            if (officeToRemove != null)
-            {
-                _offices.Remove(officeToRemove);
-            }
-        }*/
     }
 }

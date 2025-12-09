@@ -82,7 +82,9 @@ namespace DocumentManagementSystem.Services
         {
             try
             {
-                // First get user by username
+                Console.WriteLine($"[LOGIN] Attempting login for username: '{username}'");
+
+                // First get user by username (case-sensitive first)
                 var sql = "SELECT \"UserId\", \"Username\", \"PasswordHash\", \"Role\" FROM \"DocMS\".\"Users\" WHERE \"Username\" = @username";
                 var parameters = new[]
                 {
@@ -90,13 +92,35 @@ namespace DocumentManagementSystem.Services
                 };
                 var results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>(), parameters);
 
+                Console.WriteLine($"[LOGIN] Query (case-sensitive) returned {results.Count} row(s)");
+
+                // If no results, try case-insensitive search
+                if (results.Count == 0)
+                {
+                    sql = "SELECT \"UserId\", \"Username\", \"PasswordHash\", \"Role\" FROM \"DocMS\".\"Users\" WHERE LOWER(\"Username\") = LOWER(@username)";
+
+                    var caseInsensitiveParameters = new[]
+                    {
+                        new NpgsqlParameter("@username", username)
+                    };
+                    results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>(), caseInsensitiveParameters);
+                    Console.WriteLine($"[LOGIN] Query (case-insensitive) returned {results.Count} row(s)");
+                }
+
                 if (results.Count > 0)
                 {
                     var row = results[0];
                     var storedPasswordHash = row["PasswordHash"]?.ToString() ?? string.Empty;
+                    var storedUsername = row["Username"]?.ToString() ?? string.Empty;
+                    
+                    Console.WriteLine($"[LOGIN] Found user in DB: '{storedUsername}'");
+                    Console.WriteLine($"[LOGIN] Password hash exists: {!string.IsNullOrEmpty(storedPasswordHash)}");
+                    Console.WriteLine($"[LOGIN] Password hash starts with $2: {storedPasswordHash?.StartsWith("$2") ?? false}");
+                    
+                    bool passwordValid = VerifyPassword(password, storedPasswordHash);
+                    Console.WriteLine($"[LOGIN] Password verification result: {passwordValid}");
 
-                    // Verify password using BCrypt
-                    if (VerifyPassword(password, storedPasswordHash))
+                    if (passwordValid)
                     {
                         _user = new UserModel
                         {
@@ -105,17 +129,33 @@ namespace DocumentManagementSystem.Services
                             PasswordHash = storedPasswordHash,
                             Role = row["Role"]?.ToString() ?? string.Empty
                         };
+                        Console.WriteLine($"[LOGIN] SUCCESS - User: {_user.Username}, Role: {_user.Role}");
                         return true;
                     }
+                    else
+                    {
+                        Console.WriteLine("[LOGIN] Password verification failed");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[LOGIN] No user found with username: '{username}'");
                 }
 
                 _user = new UserModel();
                 return false;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[LOGIN] ERROR: {ex.Message}");
+                Console.WriteLine($"[LOGIN] Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[LOGIN] Inner exception: {ex.InnerException.Message}");
+                    throw new Exception($"Database error: {ex.InnerException.Message}", ex);
+                }
                 _user = new UserModel();
-                return false;
+                throw new Exception($"Login error: {ex.Message}", ex);
             }
         }
 
@@ -144,9 +184,26 @@ namespace DocumentManagementSystem.Services
         public bool VerifyPassword(string password, string passwordHash)
         {
             if (string.IsNullOrEmpty(passwordHash))
+            {
                 return false;
+            }
 
-            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+            if (!passwordHash.StartsWith("$2"))
+            {
+
+                bool result = password == passwordHash;
+                return result;
+            }
+
+            try
+            {
+                bool result = BCrypt.Net.BCrypt.Verify(password, passwordHash);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
 
         // Get all users
@@ -156,7 +213,7 @@ namespace DocumentManagementSystem.Services
             {
                 var sql = "SELECT \"UserId\", \"Username\", \"PasswordHash\", \"Role\" FROM \"DocMS\".\"Users\" ORDER BY \"Username\"";
                 var results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>());
-                
+
                 var users = new List<UserModel>();
                 foreach (var row in results)
                 {
@@ -187,7 +244,7 @@ namespace DocumentManagementSystem.Services
                     new NpgsqlParameter("@userId", userId)
                 };
                 var results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>(), parameters);
-                
+
                 if (results.Count > 0)
                 {
                     var row = results[0];
@@ -217,17 +274,17 @@ namespace DocumentManagementSystem.Services
                 {
                     sql += " AND \"UserId\" != @excludeUserId";
                 }
-                
+
                 var parameters = new List<NpgsqlParameter>
                 {
                     new NpgsqlParameter("@username", username)
                 };
-                
+
                 if (excludeUserId.HasValue)
                 {
                     parameters.Add(new NpgsqlParameter("@excludeUserId", excludeUserId.Value));
                 }
-                
+
                 var result = await _dbConnection.ExecuteScalarAsync(sql, parameters.ToArray());
                 return result != null && Convert.ToInt32(result) > 0;
             }
@@ -243,7 +300,6 @@ namespace DocumentManagementSystem.Services
             try
             {
                 int rowsAffected;
-                // If password is provided, hash it and update
                 if (!string.IsNullOrWhiteSpace(password))
                 {
                     var sql = "UPDATE \"DocMS\".\"Users\" SET \"Username\" = @username, \"PasswordHash\" = @passwordHash, \"Role\" = @role WHERE \"UserId\" = @userId";
@@ -273,9 +329,6 @@ namespace DocumentManagementSystem.Services
             }
             catch (Exception ex)
             {
-                // Log the exception for debugging
-                System.Diagnostics.Debug.WriteLine($"Error updating user: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }
