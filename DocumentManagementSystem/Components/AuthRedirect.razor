@@ -1,4 +1,3 @@
-@page "/logout"
 @using DocumentManagementSystem.Services
 @inject AuthenticationStateService AuthService
 @inject NavigationManager Nav
@@ -7,10 +6,12 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // Logout the user
-        AuthService.Logout();
+        await AuthService.InitializeAsync();
 
-        // Redirect to login page
-        Nav.NavigateTo("/login", forceLoad: true);
+        
+        if (!AuthService.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+        }
     }
 }

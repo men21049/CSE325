@@ -1,49 +1,364 @@
-@using DocumentManagementSystem.Model
-
-@page "/documents"
-
+@page "/"
+@rendermode InteractiveServer
+@using DocumentManagementSystem.Services
+@using Microsoft.JSInterop
+@inject OfficeService OfficeService
+@inject DocumentService DocumentService
+@inject NavigationManager Nav
+@inject IJSRuntime JSRuntime
+<AuthRedirect />
 <h3>Documents</h3>
 
-<input class="form-control mb-3" placeholder="Search documents..." @bind="SearchText" />
+<input class="form-control mb-3" placeholder="Search documents..." @bind="SearchText" @oninput="OnSearchChanged" />
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>File Name</th>
-            <th>Office</th>
-            <th>Date Uploaded</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var doc in FilteredDocuments)
-        {
+@if (documents == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading documents...</p>
+    </div>
+}
+else if (documents.Count == 0)
+{
+    <div class="alert alert-info">No documents found.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
             <tr>
-                <td>@doc.FileName</td>
-                <td>@doc.Office</td>
-                <td>@doc.DateUploaded.ToShortDateString()</td>
-                <td>
-                    <button class="btn btn-sm btn-primary">View</button>
-                    <button class="btn btn-sm btn-warning">Edit</button>
-                    <button class="btn btn-sm btn-danger">Delete</button>
-                </td>
+                <th>File Name</th>
+                <th>File Type</th>
+                <th>Office</th>
+                <th>Date Uploaded</th>
+                <th>Actions</th>
             </tr>
+        </thead>
+        <tbody>
+            @foreach (var doc in documents)
+            {
+                <tr>
+                    <td>@doc.FileName</td>
+                    <td><span class="badge bg-secondary">@doc.FileType</span></td>
+                    <td>@OfficeList.FirstOrDefault(o => o.OfficeID == doc.OfficeID)?.OfficeName</td>
+                    <td>@doc.UploadDate.ToShortDateString()</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(doc.FilePath))
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="() => DownloadDocument(doc.DocumentID, doc.FileName)">Download</button>
+                        }
+                        <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteConfirmation(doc)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<br />
+<h3>Upload Document</h3>
+
+<div class="mb-3">
+    <label class="form-label">Choose Document (PDF or CSV only)</label>
+    <InputFile OnChange="HandleFileUpload" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Select Office</label>
+    <select class="form-select" @bind="SelectedOfficeId">
+        @foreach (var office in OfficeList)
+        {
+            <option value="@office.OfficeID">@office.OfficeName</option>
         }
-    </tbody>
-</table>
+    </select>
+</div>
+
+<button class="btn btn-success" @onclick="UploadFile" disabled="@IsUploading">
+    @if (IsUploading)
+    {
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        <text>Uploading...</text>
+    }
+    else
+    {
+        <text>Upload</text>
+    }
+</button>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert alert-info mt-3">@Message</div>
+}
+
+@if (!string.IsNullOrEmpty(BlobUrl))
+{
+    <div class="alert alert-info mt-3">
+        <strong>File uploaded successfully!</strong><br />
+    </div>
+}
+
+
+@if (ShowConfirmDeleteModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Deleting the Document</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to permanently delete <strong>@DocumentToDelete?.FileName</strong>?</p>
+                    <p class="text-muted">Delete cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete" disabled="@IsDeleting">
+                        @if (IsDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <text>Deleting...</text>
+                        }
+                        else
+                        {
+                            <text>Delete</text>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (ShowSuccessModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">✓ Document has been eliminated</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseSuccessModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>The Documnent <strong>@DeletedFileName</strong> has successfully been deleted.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" @onclick="CloseSuccessModal">Accept</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
 
 @code {
+    private List<DocumentManagementSystem.Model.DocumentModel>? documents;
     private string SearchText = "";
 
-    // ❗RENAMED so it doesn't conflict with the page class
-    private List<DocumentModel> DocumentList = new()
-    {
-        new DocumentModel { FileName = "BudgetReport.pdf", Office = "Accounting", DateUploaded = DateTime.Now },
-        new DocumentModel { FileName = "EmployeeList.csv", Office = "HR", DateUploaded = DateTime.Now },
-    };
+    private string Message = "";
 
-    // ❗Updated to use DocumentList
-    private IEnumerable<DocumentModel> FilteredDocuments =>
-        DocumentList.Where(d => string.IsNullOrEmpty(SearchText) ||
-                                d.FileName.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+    private IBrowserFile? SelectedFile;
+    private int SelectedOfficeId = 0;
+    private bool IsUploading = false;
+    private bool IsSuccess = false;
+    private string BlobUrl = "";
+    private List<OfficeService.OfficeInfo> OfficeList = new();
+
+
+    private bool ShowConfirmDeleteModal = false;
+    private bool ShowSuccessModal = false;
+    private bool IsDeleting = false;
+    private DocumentManagementSystem.Model.DocumentModel? DocumentToDelete;
+    private string DeletedFileName = "";
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await OnSearchChanged(new ChangeEventArgs { Value = "" });
+            await OfficeService.RefreshOfficesAsync();
+            OfficeList = OfficeService.GetOffices().ToList();
+            // set default selected office
+            if (OfficeList.Count > 0)
+            {
+                SelectedOfficeId = OfficeList[0].OfficeID;
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"Warning: Could not load offices from database. Using default list. Error: {ex.Message}";
+        }
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        SelectedFile = e.File;
+        Message = "";
+        BlobUrl = "";
+        IsSuccess = false;
+    }
+
+    private async Task UploadFile()
+    {
+        Message = "";
+        IsSuccess = false;
+        BlobUrl = "";
+
+        if (SelectedFile == null)
+        {
+            Message = "Please select a file.";
+            return;
+        }
+
+        // Validate file extension
+        var fileExtension = System.IO.Path.GetExtension(SelectedFile.Name).ToLowerInvariant();
+        if (fileExtension != ".pdf" && fileExtension != ".csv")
+        {
+            Message = "Only PDF or CSV files are allowed.";
+            return;
+        }
+
+        // Validate content type
+        if (!(SelectedFile.ContentType == "application/pdf" ||
+              SelectedFile.ContentType == "text/csv" ||
+              SelectedFile.ContentType == "application/csv" ||
+              SelectedFile.ContentType == "text/comma-separated-values"))
+        {
+            Message = "Only PDF or CSV files are allowed.";
+            return;
+        }
+
+        // Validate that an office is selected
+        var selectedOffice = OfficeList.FirstOrDefault(o => o.OfficeID == SelectedOfficeId);
+        if (selectedOffice == null)
+        {
+            Message = "Please select a valid office.";
+            return;
+        }
+
+        string fileType = SelectedFile.ContentType == "application/pdf" ? "PDF" : "CSV";
+
+        IsUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            await DocumentService.AddDocumentsAsync(SelectedFile.Name, SelectedFile, fileType, SelectedOfficeId);
+            Message = "File uploaded successfully.";
+            IsSuccess = true;
+            SelectedFile = null; // Clear selected file after successful upload
+            await DocumentService.RefreshDocumentsAsync();
+            documents = DocumentService.GetDocuments().ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error uploading file: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                Message += $" Inner error: {ex.InnerException.Message}";
+            }
+            IsSuccess = false;
+            BlobUrl = "";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        SearchText = e.Value?.ToString() ?? "";
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            await DocumentService.RefreshDocumentsAsync();
+            documents = DocumentService.GetDocuments().ToList();
+        }
+        else
+        {
+            documents = await DocumentService.SearchDocumentsAsync(SearchText);
+        }
+        StateHasChanged();
+    }
+
+    private void ShowDeleteConfirmation(DocumentManagementSystem.Model.DocumentModel doc)
+    {
+        DocumentToDelete = doc;
+        ShowConfirmDeleteModal = true;
+        StateHasChanged();
+    }
+
+    private void CancelDelete()
+    {
+        ShowConfirmDeleteModal = false;
+        DocumentToDelete = null;
+        StateHasChanged();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (DocumentToDelete == null) return;
+
+        IsDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+
+            DeletedFileName = DocumentToDelete.FileName;
+
+
+            await DocumentService.DeleteDocumentAsync(DocumentToDelete.DocumentID);
+
+
+            ShowConfirmDeleteModal = false;
+            DocumentToDelete = null;
+
+
+            await DocumentService.RefreshDocumentsAsync();
+            documents = DocumentService.GetDocuments().ToList();
+
+
+            ShowSuccessModal = true;
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error al eliminar el archivo: {ex.Message}";
+            ShowConfirmDeleteModal = false;
+            DocumentToDelete = null;
+        }
+        finally
+        {
+            IsDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseSuccessModal()
+    {
+        ShowSuccessModal = false;
+        DeletedFileName = "";
+        StateHasChanged();
+    }
+
+    private async Task DownloadDocument(int documentId, string fileName)
+    {
+        try
+        {
+            // Create download URL
+            var downloadUrl = $"/api/download/{documentId}";
+            
+            // Use JavaScript to trigger download
+            await JSRuntime.InvokeVoidAsync("downloadFile", downloadUrl, fileName);
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error downloading file: {ex.Message}";
+            StateHasChanged();
+        }
+    }
 }

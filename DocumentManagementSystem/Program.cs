@@ -1,15 +1,20 @@
 using DocumentManagementSystem.Components;
-using DocumentManagementSystem.Services;  // <-- required for services
+using DocumentManagementSystem.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------------------------------------------------------------------
-// REGISTER APPLICATION SERVICES (Document, Office, User)
-// ---------------------------------------------------------------------
-builder.Services.AddSingleton<DocumentService>();
+// DatabaseConnection and Services
+builder.Services.AddSingleton<DocumentManagementSystem.Model.DatabaseConnection>();
+builder.Services.AddSingleton<BlobStorageService>();
+builder.Services.AddSingleton<DocumentService>(sp =>
+    new DocumentService(
+        sp.GetRequiredService<DocumentManagementSystem.Model.DatabaseConnection>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<BlobStorageService>()));
 builder.Services.AddSingleton<OfficeService>();
 builder.Services.AddSingleton<UserService>();
-
+builder.Services.AddSingleton<AuthenticationStateService>();
 // ---------------------------------------------------------------------
 // Razor Components / Blazor Server setup
 // ---------------------------------------------------------------------
@@ -18,26 +23,37 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-// ---------------------------------------------------------------------
-// HTTP REQUEST PIPELINE
-// ---------------------------------------------------------------------
+// HTTP Request Pipeline
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();  // Enforces HTTPS for production
+    app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-app.UseAntiforgery();   // CSRF protection
-
-// ---------------------------------------------------------------------
-// Static Files + Routing
-// ---------------------------------------------------------------------
+app.UseExceptionHandler("/Error", createScopeForErrors: true);
+app.UseAntiforgery();
 app.MapStaticAssets();
+
+// Document download endpoint
+app.MapGet("/api/download/{documentId}", async (int documentId, DocumentService documentService) =>
+{
+    try
+    {
+        var (stream, fileName, contentType) = await documentService.GetDocumentStreamAsync(documentId);
+        
+        return Results.File(
+            stream,
+            contentType: contentType,
+            fileDownloadName: fileName
+        );
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error downloading document: {ex.Message}");
+    }
+});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-// ---------------------------------------------------------------------
 
 app.Run();

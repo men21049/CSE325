@@ -1,5 +1,8 @@
 @page "/offices"
-
+@rendermode InteractiveServer
+@using DocumentManagementSystem.Services
+@inject OfficeService OfficeService
+<AuthRedirect />
 <h3>Offices</h3>
 
 <div class="input-group mb-3">
@@ -11,35 +14,70 @@
     @foreach (var office in OfficeList)
     {
         <li class="list-group-item d-flex justify-content-between">
-            @office
-            <button class="btn btn-sm btn-danger" @onclick="() => RemoveOffice(office)">Delete</button>
+            @office.OfficeName
+            <button class="btn btn-sm btn-danger" @onclick="() => RemoveOffice(office.OfficeName)">Delete</button>
         </li>
     }
 </ul>
 
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert alert-info mt-3">@Message</div>
+}
+
 @code {
     private string NewOffice = "";
+    private List<OfficeService.OfficeInfo> OfficeList = new();
+    private string Message = "";
 
-    // FIX: renamed from "Offices" → "OfficeList"
-    private List<string> OfficeList = new()
+    protected override async Task OnInitializedAsync()
     {
-        "HR",
-        "Accounting",
-        "Supply",
-        "Admin"
-    };
-
-    private void AddOffice()
-    {
-        if (!string.IsNullOrWhiteSpace(NewOffice))
+        try
         {
-            OfficeList.Add(NewOffice);
-            NewOffice = "";
+            await OfficeService.RefreshOfficesAsync();
+            OfficeList = OfficeService.GetOffices().ToList();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Warning: Could not load offices from database. Using default list. Error: {ex.Message}";
         }
     }
 
-    private void RemoveOffice(string office)
+    private async Task AddOffice()
     {
-        OfficeList.Remove(office);
+        if (!string.IsNullOrWhiteSpace(NewOffice))
+        {
+            try
+            {
+                await OfficeService.AddOfficeAsync(NewOffice);
+                await OfficeService.RefreshOfficesAsync();
+                OfficeList = OfficeService.GetOffices().ToList();
+                NewOffice = "";
+                Message = "Office added successfully.";
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Message = $"Error adding office: {ex.Message}";
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task RemoveOffice(string office)
+    {
+        try
+        {
+            await OfficeService.RemoveOfficeAsync(office);
+            await OfficeService.RefreshOfficesAsync();
+            OfficeList = OfficeService.GetOffices().ToList();
+            Message = "Office removed successfully.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error removing office: {ex.Message}";
+            StateHasChanged();
+        }
     }
 }
