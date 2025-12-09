@@ -82,6 +82,8 @@ namespace DocumentManagementSystem.Services
         {
             try
             {
+                Console.WriteLine($"[LOGIN] Attempting login for username: '{username}'");
+
                 // First get user by username (case-sensitive first)
                 var sql = "SELECT \"UserId\", \"Username\", \"PasswordHash\", \"Role\" FROM \"DocMS\".\"Users\" WHERE \"Username\" = @username";
                 var parameters = new[]
@@ -90,7 +92,7 @@ namespace DocumentManagementSystem.Services
                 };
                 var results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>(), parameters);
 
-
+                Console.WriteLine($"[LOGIN] Query (case-sensitive) returned {results.Count} row(s)");
 
                 // If no results, try case-insensitive search
                 if (results.Count == 0)
@@ -102,7 +104,7 @@ namespace DocumentManagementSystem.Services
                         new NpgsqlParameter("@username", username)
                     };
                     results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>(), caseInsensitiveParameters);
-
+                    Console.WriteLine($"[LOGIN] Query (case-insensitive) returned {results.Count} row(s)");
                 }
 
                 if (results.Count > 0)
@@ -111,7 +113,12 @@ namespace DocumentManagementSystem.Services
                     var storedPasswordHash = row["PasswordHash"]?.ToString() ?? string.Empty;
                     var storedUsername = row["Username"]?.ToString() ?? string.Empty;
                     
+                    Console.WriteLine($"[LOGIN] Found user in DB: '{storedUsername}'");
+                    Console.WriteLine($"[LOGIN] Password hash exists: {!string.IsNullOrEmpty(storedPasswordHash)}");
+                    Console.WriteLine($"[LOGIN] Password hash starts with $2: {storedPasswordHash?.StartsWith("$2") ?? false}");
+                    
                     bool passwordValid = VerifyPassword(password, storedPasswordHash);
+                    Console.WriteLine($"[LOGIN] Password verification result: {passwordValid}");
 
                     if (passwordValid)
                     {
@@ -122,8 +129,17 @@ namespace DocumentManagementSystem.Services
                             PasswordHash = storedPasswordHash,
                             Role = row["Role"]?.ToString() ?? string.Empty
                         };
+                        Console.WriteLine($"[LOGIN] SUCCESS - User: {_user.Username}, Role: {_user.Role}");
                         return true;
                     }
+                    else
+                    {
+                        Console.WriteLine("[LOGIN] Password verification failed");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[LOGIN] No user found with username: '{username}'");
                 }
 
                 _user = new UserModel();
@@ -131,12 +147,15 @@ namespace DocumentManagementSystem.Services
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[LOGIN] ERROR: {ex.Message}");
+                Console.WriteLine($"[LOGIN] Stack trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    throw new Exception(ex.InnerException.Message);
+                    Console.WriteLine($"[LOGIN] Inner exception: {ex.InnerException.Message}");
+                    throw new Exception($"Database error: {ex.InnerException.Message}", ex);
                 }
                 _user = new UserModel();
-                return false;
+                throw new Exception($"Login error: {ex.Message}", ex);
             }
         }
 

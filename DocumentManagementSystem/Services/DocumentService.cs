@@ -9,18 +9,18 @@ namespace DocumentManagementSystem.Services
     {
         private readonly DatabaseConnection _dbConnection;
         private readonly IConfiguration _configuration;
+        private readonly BlobStorageService _blobStorageService;
         private List<DocumentManagementSystem.Model.DocumentModel> _documents = new();
 
         private string BlobUrl = "";
 
         private List<OfficeService.OfficeInfo> OfficeList = new();
 
-        private BlobStorageService _blobStorageService => new BlobStorageService(_configuration);
-
-        public DocumentService(DatabaseConnection dbConnection, IConfiguration configuration)
+        public DocumentService(DatabaseConnection dbConnection, IConfiguration configuration, BlobStorageService blobStorageService)
         {
             _dbConnection = dbConnection;
             _configuration = configuration;
+            _blobStorageService = blobStorageService;
         }
 
         public async Task LoadDocumentsAsync()
@@ -62,10 +62,30 @@ namespace DocumentManagementSystem.Services
 
         public async Task AddDocumentsAsync(string filename, IBrowserFile SelectedFile, string filetype, int officeID)
         {
+            // Upload file to blob storage first
             BlobUrl = await _blobStorageService.UploadBrowserFileAsync(SelectedFile);
 
+            // Validate that blob upload was successful
+            if (string.IsNullOrWhiteSpace(BlobUrl))
+            {
+                throw new Exception("Failed to upload file to storage. The file path is empty.");
+            }
+
+            // Validate required parameters
             if (string.IsNullOrWhiteSpace(filename) || string.IsNullOrWhiteSpace(filetype))
-                return;
+            {
+                // If validation fails, try to delete the uploaded blob to avoid orphaned files
+                try
+                {
+                    string fileName = BlobUrl.Substring(BlobUrl.LastIndexOf('/') + 1);
+                    await _blobStorageService.DeleteFileAsync(fileName);
+                }
+                catch
+                {
+                    // Log error but don't throw - the main error is more important
+                }
+                throw new Exception("Filename and file type are required.");
+            }
 
             try
             {
@@ -82,6 +102,16 @@ namespace DocumentManagementSystem.Services
             }
             catch
             {
+                // If database insert fails, try to delete the uploaded blob to avoid orphaned files
+                try
+                {
+                    string fileName = BlobUrl.Substring(BlobUrl.LastIndexOf('/') + 1);
+                    await _blobStorageService.DeleteFileAsync(fileName);
+                }
+                catch
+                {
+                    // Log error but don't throw - the main error is more important
+                }
                 throw;
             }
         }
@@ -155,6 +185,50 @@ namespace DocumentManagementSystem.Services
                 throw;
             }
 
+        }
+
+        public async Task<(Stream stream, string fileName, string contentType)> GetDocumentStreamAsync(int documentID)
+        {
+            try
+            {
+                var sql = "SELECT \"FilePath\", \"FileName\", \"FileType\" FROM \"DocMS\".\"Documents\" WHERE \"DocumentId\" = @DocumentId";
+                var parameters = new[] { new NpgsqlParameter("@DocumentId", documentID) };
+                var results = await _dbConnection.ExecuteQueryAsync(sql, new Dictionary<string, object>(), parameters);
+
+                if (results.Count == 0)
+                {
+                    throw new Exception("Document not found.");
+                }
+
+                var filePath = results[0]["FilePath"]?.ToString() ?? string.Empty;
+                var fileName = results[0]["FileName"]?.ToString() ?? "document";
+                var fileType = results[0]["FileType"]?.ToString() ?? "";
+
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    throw new Exception("Document file path is empty.");
+                }
+
+                // Extract blob name from full URL
+                string blobName = filePath.Substring(filePath.LastIndexOf('/') + 1);
+
+                // Get file stream from blob storage
+                var sourceStream = await _blobStorageService.DownloadFileAsync(blobName);
+
+                // Copy stream to MemoryStream to ensure it can be read multiple times
+                var memoryStream = new MemoryStream();
+                await sourceStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
+                // Determine content type based on file type
+                string contentType = fileType.ToUpper() == "PDF" ? "application/pdf" : "text/csv";
+
+                return (memoryStream, fileName, contentType);
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }

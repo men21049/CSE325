@@ -97,6 +97,8 @@
             }
 
 
+            Console.WriteLine($"[LOGIN PAGE] Login attempt - Username: '{username}', Password length: {password.Length}");
+
             bool loginResult = await AuthService.LoginAsync(username, password);
             
             if (loginResult)
@@ -104,6 +106,7 @@
                 // Get the role from the authenticated user
                 var role = AuthService.CurrentUserRole ?? "User";
                 var currentUsername = AuthService.CurrentUsername ?? "";
+                Console.WriteLine($"[LOGIN PAGE] Login successful - Username: {currentUsername}, Role: {role}");
 
                 // Wait a moment to ensure state is updated
                 await Task.Delay(100);
@@ -114,11 +117,18 @@
             else
             {
                 Error = "Invalid username or password. Please check your credentials and try again.";
+                Console.WriteLine("[LOGIN PAGE] Login failed - Invalid credentials");
             }
         }
         catch (Exception ex)
         {
             Error = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"[LOGIN PAGE] Exception: {ex.Message}");
+            Console.WriteLine($"[LOGIN PAGE] Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"[LOGIN PAGE] Inner exception: {ex.InnerException.Message}");
+            }
         }
         finally
         {

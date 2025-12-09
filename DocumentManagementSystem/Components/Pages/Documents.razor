@@ -1,8 +1,11 @@
 @page "/"
 @rendermode InteractiveServer
 @using DocumentManagementSystem.Services
+@using Microsoft.JSInterop
 @inject OfficeService OfficeService
 @inject DocumentService DocumentService
+@inject NavigationManager Nav
+@inject IJSRuntime JSRuntime
 <AuthRedirect />
 <h3>Documents</h3>
 
@@ -44,7 +47,7 @@ else
                     <td>
                         @if (!string.IsNullOrEmpty(doc.FilePath))
                         {
-                            <a href="@doc.FilePath" target="_blank" class="btn btn-sm btn-primary">View</a>
+                            <button class="btn btn-sm btn-primary" @onclick="() => DownloadDocument(doc.DocumentID, doc.FileName)">Download</button>
                         }
                         <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteConfirmation(doc)">Delete</button>
                     </td>
@@ -198,30 +201,53 @@ else
 
     private async Task UploadFile()
     {
+        Message = "";
+        IsSuccess = false;
+        BlobUrl = "";
+
         if (SelectedFile == null)
         {
             Message = "Please select a file.";
-            IsSuccess = false;
             return;
         }
 
-        if (!(SelectedFile.ContentType == "application/pdf" ||
-        SelectedFile.ContentType == "text/csv"))
+        // Validate file extension
+        var fileExtension = System.IO.Path.GetExtension(SelectedFile.Name).ToLowerInvariant();
+        if (fileExtension != ".pdf" && fileExtension != ".csv")
         {
             Message = "Only PDF or CSV files are allowed.";
-            IsSuccess = false;
+            return;
+        }
+
+        // Validate content type
+        if (!(SelectedFile.ContentType == "application/pdf" ||
+              SelectedFile.ContentType == "text/csv" ||
+              SelectedFile.ContentType == "application/csv" ||
+              SelectedFile.ContentType == "text/comma-separated-values"))
+        {
+            Message = "Only PDF or CSV files are allowed.";
+            return;
+        }
+
+        // Validate that an office is selected
+        var selectedOffice = OfficeList.FirstOrDefault(o => o.OfficeID == SelectedOfficeId);
+        if (selectedOffice == null)
+        {
+            Message = "Please select a valid office.";
             return;
         }
 
         string fileType = SelectedFile.ContentType == "application/pdf" ? "PDF" : "CSV";
 
-        var selectedOffice = OfficeList.FirstOrDefault(o => o.OfficeID == SelectedOfficeId);
+        IsUploading = true;
+        StateHasChanged();
 
         try
         {
             await DocumentService.AddDocumentsAsync(SelectedFile.Name, SelectedFile, fileType, SelectedOfficeId);
             Message = "File uploaded successfully.";
             IsSuccess = true;
+            SelectedFile = null; // Clear selected file after successful upload
             await DocumentService.RefreshDocumentsAsync();
             documents = DocumentService.GetDocuments().ToList();
             StateHasChanged();
@@ -282,21 +308,21 @@ else
 
         try
         {
-        
+
             DeletedFileName = DocumentToDelete.FileName;
 
-       
+
             await DocumentService.DeleteDocumentAsync(DocumentToDelete.DocumentID);
 
-          
+
             ShowConfirmDeleteModal = false;
             DocumentToDelete = null;
 
-         
+
             await DocumentService.RefreshDocumentsAsync();
             documents = DocumentService.GetDocuments().ToList();
 
-      
+
             ShowSuccessModal = true;
         }
         catch (Exception ex)
@@ -317,5 +343,22 @@ else
         ShowSuccessModal = false;
         DeletedFileName = "";
         StateHasChanged();
+    }
+
+    private async Task DownloadDocument(int documentId, string fileName)
+    {
+        try
+        {
+            // Create download URL
+            var downloadUrl = $"/api/download/{documentId}";
+            
+            // Use JavaScript to trigger download
+            await JSRuntime.InvokeVoidAsync("downloadFile", downloadUrl, fileName);
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error downloading file: {ex.Message}";
+            StateHasChanged();
+        }
     }
 }

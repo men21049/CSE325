@@ -14,9 +14,36 @@ namespace DocumentManagementSystem.Services
             var connectionString = configuration.GetConnectionString("AzureStorageConnection")
                 ?? throw new InvalidOperationException("Azure Storage connection string not found in configuration");
             
-            _blobServiceClient = new BlobServiceClient(connectionString);
-            _containerName = configuration["AzureStorage:ContainerName"] ?? "documents";
+            // Log connection string info (without sensitive data)
+            var accountName = ExtractAccountName(connectionString);
+            Console.WriteLine($"[BLOB STORAGE] Initializing with account: {accountName}");
+            Console.WriteLine($"[BLOB STORAGE] Connection string exists: {!string.IsNullOrEmpty(connectionString)}");
+            
+            try
+            {
+                _blobServiceClient = new BlobServiceClient(connectionString);
+                _containerName = configuration["AzureStorage:ContainerName"] ?? "documents";
+                Console.WriteLine($"[BLOB STORAGE] Container name: {_containerName}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BLOB STORAGE] Error creating BlobServiceClient: {ex.Message}");
+                throw;
+            }
+        }
 
+        private string ExtractAccountName(string connectionString)
+        {
+            try
+            {
+                var parts = connectionString.Split(';');
+                var accountPart = parts.FirstOrDefault(p => p.StartsWith("AccountName=", StringComparison.OrdinalIgnoreCase));
+                return accountPart?.Split('=')[1] ?? "unknown";
+            }
+            catch
+            {
+                return "unknown";
+            }
         }
 
         private async Task EnsureContainerExistsAsync()
@@ -34,23 +61,38 @@ namespace DocumentManagementSystem.Services
 
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType)
         {
-
-            await EnsureContainerExistsAsync();
-            
-            var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
-            var blobClient = containerClient.GetBlobClient(fileName);
-
-            var uploadOptions = new BlobUploadOptions
+            try
             {
-                HttpHeaders = new BlobHttpHeaders
-                {
-                    ContentType = contentType
-                }
-            };
+                Console.WriteLine($"[BLOB STORAGE] Starting upload for file: {fileName}");
+                await EnsureContainerExistsAsync();
+                
+                var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+                var blobClient = containerClient.GetBlobClient(fileName);
+                Console.WriteLine($"[BLOB STORAGE] Blob client created. Target URI: {blobClient.Uri}");
 
-            await blobClient.UploadAsync(fileStream, uploadOptions);
-            
-            return blobClient.Uri.ToString();
+                var uploadOptions = new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders
+                    {
+                        ContentType = contentType
+                    }
+                };
+
+                await blobClient.UploadAsync(fileStream, uploadOptions);
+                Console.WriteLine($"[BLOB STORAGE] Upload successful. File URL: {blobClient.Uri}");
+                
+                return blobClient.Uri.ToString();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BLOB STORAGE] Upload error: {ex.Message}");
+                Console.WriteLine($"[BLOB STORAGE] Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[BLOB STORAGE] Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
 
         public async Task<string> UploadBrowserFileAsync(Microsoft.AspNetCore.Components.Forms.IBrowserFile file, string? customFileName = null)
